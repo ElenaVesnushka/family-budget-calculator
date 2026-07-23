@@ -1,0 +1,193 @@
+/**
+ * Компоненты оболочки: уведомления и модальные окна.
+ */
+
+body.modal-open {
+  overflow: hidden;
+}
+
+.notification {
+  position: relative;
+  padding: var(--space-4) var(--space-10) var(--space-4) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-relaxed);
+  box-shadow: var(--shadow-sm);
+}
+
+.notification + .notification {
+  margin-top: var(--space-3);
+}
+
+.notification__message {
+  margin: 0;
+}
+
+.notification__close {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xl);
+  line-height: 1;
+  color: var(--color-text-muted);
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.notification__close:hover {
+  background-color: rgba(0, 0, 0, 0.06);
+  color: var(--color-text);
+}
+
+[data-theme="dark"] .notification__close:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.notification--info {
+  background-color: var(--color-info-subtle);
+  color: var(--color-text);
+  border-left: 3px solid var(--color-info);
+}
+
+.notification--reminder {
+  background-color: var(--color-accent-subtle);
+  color: var(--color-text);
+  border-left: 3px solid var(--color-accent);
+}
+
+.notification--warning {
+  background-color: var(--color-warning-subtle);
+  color: var(--color-text);
+  border-left: 3px solid var(--color-warning);
+}
+
+.modal-root {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background-color: rgba(26, 29, 36, 0.45);
+  backdrop-filter: blur(2px);
+}
+
+.modal-root[aria-hidden="false"] {
+  display: flex;
+}
+
+.modal {
+  position: relative;
+  width: 100%;
+  max-width: 32rem;
+  max-height: calc(100vh - var(--space-8));
+  overflow-y: auto;
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  animation: modal-enter var(--transition-normal);
+}
+
+@keyframes modal-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.98) translateY(0.5rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.modal__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-6);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.modal__header--close-only {
+  justify-content: flex-end;
+  border-bottom: none;
+  padding-block: var(--space-3);
+}
+
+.modal__title {
+  flex: 1;
+  font-size: var(--font-size-lg);
+  line-height: var(--line-height-tight);
+}
+
+.modal__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-2xl);
+  line-height: 1;
+  color: var(--color-text-muted);
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.modal__close:hover {
+  background-color: var(--color-bg-subtle);
+  color: var(--color-text);
+}
+
+.modal__body {
+  padding: var(--space-6);
+  min-height: 4rem;
+}
+
+.modal__body:empty {
+  min-height: 0;
+  padding-block: var(--space-4);
+}
+
+.modal__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-6);
+  border-top: 1px solid var(--color-border);
+}
+
+[data-theme="dark"] .modal-root {
+  background-color: rgba(0, 0, 0, 0.65);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal {
+    animation: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .modal-root {
+    padding: var(--space-3);
+    align-items: flex-end;
+  }
+
+  .modal {
+    max-height: calc(100vh - var(--space-6));
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+}

@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Калькулятор семейного бюджета — персональный инструмент финансового планирования">
+  <title>Калькулятор семейного бюджета</title>
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+</head>
+<body>
+  <div id="app" class="app">
+
+    <header class="app-header" role="banner">
+      <div class="app-header__inner">
+        <h1 class="app-header__title">Калькулятор семейного бюджета</h1>
+      </div>
+    </header>
+
+    <div class="app-body">
+
+      <nav class="app-nav" aria-label="Основные разделы">
+        <ul class="app-nav__list" role="list">
+          <li class="app-nav__item">
+            <button type="button" class="app-nav__link" data-section="dashboard" aria-current="page">
+              Главный экран
+            </button>
+          </li>
+          <li class="app-nav__item">
+            <button type="button" class="app-nav__link" data-section="incomes">
+              Доходы
+            </button>
+          </li>
+          <li class="app-nav__item">
+            <button type="button" class="app-nav__link" data-section="expenses">
+              Расходы
+            </button>
+          </li>
+          <li class="app-nav__item">
+            <button type="button" class="app-nav__link" data-section="limits">
+              Лимиты
+            </button>
+          </li>
+          <li class="app-nav__item">
+            <button type="button" class="app-nav__link" data-section="cushion">
+              Финансовая подушка
+            </button>
+          </li>
+          <li class="app-nav__item">
+            <button type="button" class="app-nav__link" data-section="assets">
+              Мои средства
+            </button>
+          </li>
+          <li class="app-nav__item">
+            <button type="button" class="app-nav__link" data-section="templates">
+              Шаблоны
+            </button>
+          </li>
+          <li class="app-nav__item">
+            <button type="button" class="app-nav__link" data-section="reports">
+              Отчёты и аналитика
+            </button>
+          </li>
+          <li class="app-nav__item">
+            <button type="button" class="app-nav__link" data-section="settings">
+              Настройки
+            </button>
+          </li>
+        </ul>
+      </nav>
+
+      <main class="app-main" id="main-content" role="main" tabindex="-1">
+
+        <section
+          id="section-dashboard"
+          class="app-section app-section--active"
+          data-section="dashboard"
+          aria-labelledby="section-title-dashboard"
+        >
+          <header class="app-section__header">
+            <h2 class="app-section__title" id="section-title-dashboard">Главный экран</h2>
+            <p class="app-section__description">
+              Ключевые показатели текущего бюджета: доходы, расходы, «Мой запас» и финансовое настроение.
+            </p>
+          </header>
+          <div class="app-section__content">
+            <div class="app-section__workspace" data-region="dashboard" data-workspace="dashboard"></div>
+          </div>
+        </section>
+
+        <section
+          id="section-incomes"
+          class="app-section"
+          data-section="incomes"
+          aria-labelledby="section-title-incomes"
+          hidden
+        >
+          <header class="app-section__header">
+            <h2 class="app-section__title" id="section-title-incomes">Доходы</h2>
+            <p class="app-section__description">
+              Учёт денежных поступлений, влияющих на текущий бюджет, включая ожидаемые доходы.
+            </p>
+          </header>
+          <div class="app-section__content">
+            <div class="app-section__workspace" data-region="incomes" data-workspace="incomes"></div>
+          </div>
+        </section>
+
+        <section
+          id="section-expenses"
+          class="app-section"
+          data-section="expenses"
+          aria-labelledby="section-title-expenses"
+          hidden
+        >
+          <header class="app-section__header">
+            <h2 class="app-section__title" id="section-title-expenses">Расходы</h2>
+            <p class="app-section__description">
+              Учёт денежных затрат по категориям и статьям, включая плановые расходы.
+            </p>
+          </header>
+          <div class="app-section__content">
+            <div class="app-section__workspace" data-region="expenses" data-workspace="expenses"></div>
+          </div>
+        </section>
+
+        <section
+          id="section-limits"
+          class="app-section"
+          data-section="limits"
+          aria-labelledby="section-title-limits"
+          hidden
+        >
+          <header class="app-section__header">
+            <h2 class="app-section__title" id="section-title-limits">Лимиты</h2>
+            <p class="app-section__description">
+              Планирование допустимых расходов и контроль их выполнения по категориям и статьям.
+            </p>
+          </header>
+          <div class="app-section__content">
+            <div class="app-section__workspace" data-region="limits" data-workspace="limits"></div>
+          </div>
+        </section>
+
+        <section
+          id="section-cushion"
+          class="app-section"
+          data-section="cushion"
+          aria-labelledby="section-title-cushion"
+          hidden
+        >
+          <header class="app-section__header">
+            <h2 class="app-section__title" id="section-title-cushion">Финансовая подушка</h2>
+            <p class="app-section__description">
+              Контроль финансовой устойчивости, размера подушки и показателя «Мой запас».
+            </p>
+          </header>
+          <div class="app-section__content">
+            <div class="app-section__workspace" data-region="cushion" data-workspace="cushion"></div>
+          </div>
+        </section>
+
+        <section
+          id="section-assets"
+          class="app-section"
+          data-section="assets"
+          aria-labelledby="section-title-assets"
+          hidden
+        >
+          <header class="app-section__header">
+            <h2 class="app-section__title" id="section-title-assets">Мои средства</h2>
+            <p class="app-section__description">
+              Учёт всех денежных активов независимо от текущего бюджета и история изменения капитала.
+            </p>
+          </header>
+          <div class="app-section__content">
+            <div class="app-section__workspace" data-region="assets" data-workspace="assets"></div>
+          </div>
+        </section>
+
+        <section
+          id="section-templates"
+          class="app-section"
+          data-section="templates"
+          aria-labelledby="section-title-templates"
+          hidden
+        >
+          <header class="app-section__header">
+            <h2 class="app-section__title" id="section-title-templates">Шаблоны</h2>
+            <p class="app-section__description">
+              Заготовки для быстрого создания повторяющихся доходов и расходов.
+            </p>
+          </header>
+          <div class="app-section__content">
+            <div class="app-section__workspace" data-region="templates" data-workspace="templates"></div>
+          </div>
+        </section>
+
+        <section
+          id="section-reports"
+          class="app-section"
+          data-section="reports"
+          aria-labelledby="section-title-reports"
+          hidden
+        >
+          <header class="app-section__header">
+            <h2 class="app-section__title" id="section-title-reports">Отчёты и аналитика</h2>
+            <p class="app-section__description">
+              Анализ финансового состояния на основе подтверждённых операций за выбранный период.
+            </p>
+          </header>
+          <div class="app-section__content">
+            <div class="app-section__workspace" data-region="reports" data-workspace="reports"></div>
+          </div>
+        </section>
+
+        <section
+          id="section-settings"
+          class="app-section"
+          data-section="settings"
+          aria-labelledby="section-title-settings"
+          hidden
+        >
+          <header class="app-section__header">
+            <h2 class="app-section__title" id="section-title-settings">Настройки</h2>
+            <p class="app-section__description">
+              Параметры финансового периода, оформления, справочников и другие настройки приложения.
+            </p>
+          </header>
+          <div class="app-section__content">
+            <div class="app-section__workspace" data-region="settings" data-workspace="settings"></div>
+          </div>
+        </section>
+
+      </main>
+
+    </div>
+
+    <aside id="notifications-panel" class="notifications" aria-label="Уведомления">
+      <header class="notifications__header">
+        <h2 class="notifications__title">Уведомления</h2>
+      </header>
+      <div id="notifications-list" class="notifications__list" aria-live="polite"></div>
+    </aside>
+
+    <div id="modal-root" class="modal-root" aria-hidden="true"></div>
+
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
