@@ -79,19 +79,11 @@
 
 .dashboard-card--wide {
   min-height: 11rem;
+  grid-column: 1 / -1;
 }
 
 .dashboard-card--wide .dashboard-card__placeholder {
   min-height: 6rem;
-}
-
-@media (min-width: 640px) {
-  .dashboard__grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-.dashboard-card--wide {
-  grid-column: 1 / -1;
 }
 
 .dashboard-mood {
@@ -188,6 +180,82 @@
 .dashboard-card--reserve .dashboard-card__title {
   color: var(--color-accent, var(--color-text));
 }
+
+.dashboard-recent__empty {
+  margin: 0;
+  padding: var(--space-4);
+  text-align: center;
+  color: var(--color-text-secondary);
+  background-color: var(--color-bg-subtle);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.dashboard-recent-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.dashboard-recent-table th,
+.dashboard-recent-table td {
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--font-size-sm);
+}
+
+.dashboard-recent-table th {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.dashboard-recent-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.dashboard-recent-table__amount {
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+}
+
+.dashboard-recent-table__amount--income {
+  color: var(--color-income);
+}
+
+.dashboard-recent-table__amount--expense {
+  color: var(--color-expense);
+}
+
+.dashboard-recent-table__type {
+  display: inline-block;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.dashboard-recent-table__type--income {
+  color: var(--color-income);
+  background-color: var(--color-income-subtle);
+}
+
+.dashboard-recent-table__type--expense {
+  color: var(--color-expense);
+  background-color: var(--color-expense-subtle);
+}
+
+.dashboard-recent-table__details {
+  color: var(--color-text-secondary);
+}
+
+@media (min-width: 640px) {
+  .dashboard__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (min-width: 1024px) {
@@ -208,6 +276,11 @@
 
   .dashboard-card__body {
     padding: var(--space-4);
+  }
+
+  .dashboard-recent-table {
+    display: block;
+    overflow-x: auto;
   }
 }
 
