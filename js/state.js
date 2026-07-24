@@ -100,14 +100,14 @@ function createDefaultReferences() {
       { id: EXPENSE_CATEGORIES.FOR_SOUL, name: 'Для души', isSystem: true },
     ],
     expenseArticles: [
-      { id: 'article-food', name: 'Питание', isSystem: true },
-      { id: 'article-animals', name: 'Животные', isSystem: true },
-      { id: 'article-auto', name: 'Авто', isSystem: true },
-      { id: 'article-home', name: 'Дом', isSystem: true },
-      { id: 'article-credits', name: 'Кредиты', isSystem: true },
-      { id: 'article-education', name: 'Обучение', isSystem: true },
-      { id: 'article-health', name: 'Здоровье', isSystem: true },
-      { id: 'article-personal', name: 'Личные', isSystem: true },
+      { id: 'article-food', name: 'Питание', isSystem: true, isStandard: true, isHidden: false },
+      { id: 'article-animals', name: 'Животные', isSystem: true, isStandard: true, isHidden: false },
+      { id: 'article-auto', name: 'Авто', isSystem: true, isStandard: true, isHidden: false },
+      { id: 'article-home', name: 'Дом', isSystem: true, isStandard: true, isHidden: false },
+      { id: 'article-credits', name: 'Кредиты', isSystem: true, isStandard: true, isHidden: false },
+      { id: 'article-education', name: 'Обучение', isSystem: true, isStandard: true, isHidden: false },
+      { id: 'article-health', name: 'Здоровье', isSystem: true, isStandard: true, isHidden: false },
+      { id: 'article-personal', name: 'Личные', isSystem: true, isStandard: true, isHidden: false },
     ],
   };
 }
@@ -241,14 +241,43 @@ export function createExpenseShape() {
 }
 
 /**
- * Шаблон пользовательской статьи расходов (раздел 8, 16 ТЗ).
+ * Шаблон статьи расходов (раздел 8, 16 ТЗ).
+ * isStandard — участие в наборе стандартных статей пользователя (будущие настройки).
+ * isHidden — скрытие неиспользуемых статей без удаления.
  */
 export function createExpenseArticleShape() {
   return {
     id: null,
     name: '',
     isSystem: false,
+    isStandard: false,
+    isHidden: false,
   };
+}
+
+/**
+ * Категории расходов из справочника приложения.
+ */
+export function getExpenseCategories(state) {
+  return state.references?.categories ?? [];
+}
+
+/**
+ * Статьи расходов, доступные для выбора (не скрытые).
+ */
+export function getAvailableExpenseArticles(state) {
+  return (state.references?.expenseArticles ?? []).filter((article) => !article.isHidden);
+}
+
+/**
+ * Название элемента справочника по идентификатору.
+ */
+export function getReferenceName(items, id) {
+  if (!id) {
+    return '—';
+  }
+
+  return items.find((item) => item.id === id)?.name ?? '—';
 }
 
 /**

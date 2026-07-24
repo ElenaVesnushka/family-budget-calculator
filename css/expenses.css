@@ -1,0 +1,88 @@
+/**
+ * Стили раздела «Расходы».
+ */
+
+.expenses {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.expenses__toolbar {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.expenses__list {
+  min-height: 8rem;
+}
+
+.expenses__empty {
+  margin: 0;
+  padding: var(--space-6);
+  text-align: center;
+  color: var(--color-text-secondary);
+  background-color: var(--color-bg-subtle);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.expenses-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.expenses-table thead {
+  background-color: var(--color-bg-subtle);
+}
+
+.expenses-table th,
+.expenses-table td {
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.expenses-table th {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.expenses-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.expenses-table__amount {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-expense);
+  white-space: nowrap;
+}
+
+.expenses-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+@media (max-width: 768px) {
+  .expenses-table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 640px) {
+  .expenses__toolbar .btn {
+    width: 100%;
+  }
+}

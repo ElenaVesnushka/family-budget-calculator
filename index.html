@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="css/components.css">
   <link rel="stylesheet" href="css/dashboard.css">
   <link rel="stylesheet" href="css/incomes.css">
+  <link rel="stylesheet" href="css/expenses.css">
 </head>
 <body>
   <div id="app" class="app">
@@ -196,7 +197,21 @@
             </p>
           </header>
           <div class="app-section__content">
-            <div class="app-section__workspace" data-region="expenses" data-workspace="expenses"></div>
+            <div
+              id="expenses-workspace"
+              class="app-section__workspace app-section__workspace--active"
+              data-region="expenses"
+              data-workspace="expenses"
+            >
+              <div class="expenses">
+                <div class="expenses__toolbar">
+                  <button type="button" class="btn btn--primary" data-action="add-expense">
+                    Добавить расход
+                  </button>
+                </div>
+                <div class="expenses__list" data-expenses-list role="region" aria-label="Список расходов"></div>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -323,7 +338,7 @@
 
   </div>
 
-  <script type="module" src="js/app.js?v=20260724"></script>
+  <script type="module" src="js/app.js?v=20260724-4"></script>
   <script type="module" src="js/incomes.js"></script>
 </body>
 </html>

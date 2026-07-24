@@ -23,6 +23,7 @@ import { initNotifications, showNotification, hideNotification } from './notific
 import { initModals, openModal, closeModal, isModalOpen } from './modals.js';
 import { initDashboard } from './dashboard.js';
 import { initIncomes } from './incomes.js';
+import { initExpenses } from './expenses.js';
 
 export {
   getAppState,
@@ -47,6 +48,10 @@ function bootstrap() {
       if (sectionId === 'incomes') {
         initIncomes();
       }
+
+      if (sectionId === 'expenses') {
+        initExpenses();
+      }
     },
   });
 
@@ -54,6 +59,7 @@ function bootstrap() {
   initModals(getModalRoot());
   initDashboard();
   initIncomes();
+  initExpenses();
 
   applyTheme(appState.settings.theme);
   showSection(appState.ui.activeSection);
