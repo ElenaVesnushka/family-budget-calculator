@@ -1629,6 +1629,23 @@ export function normalizeTemplates(templates) {
     }));
 }
 
+const ACCOUNT_TYPE_VALUES = new Set(Object.values(ACCOUNT_TYPES));
+
+const ACCOUNT_TYPE_LABELS = {
+  [ACCOUNT_TYPES.BANK_ACCOUNT]: 'Банковский счёт',
+  [ACCOUNT_TYPES.CARD]: 'Банковская карта',
+  [ACCOUNT_TYPES.DEPOSIT]: 'Вклад',
+  [ACCOUNT_TYPES.CASH]: 'Наличные',
+  [ACCOUNT_TYPES.CUSTOM]: 'Пользовательский счёт',
+};
+
+/**
+ * Возвращает читаемое название типа средства.
+ */
+export function getAccountTypeLabel(accountType) {
+  return ACCOUNT_TYPE_LABELS[accountType] ?? accountType ?? '—';
+}
+
 /**
  * Шаблон счёта (раздел 14 ТЗ).
  */
@@ -1643,6 +1660,139 @@ export function createAccountShape() {
     createdAt: null,
     updatedAt: null,
   };
+}
+
+/**
+ * Валидация данных средства (раздел 14 ТЗ).
+ */
+export function validateAccountPayload(payload) {
+  const errors = {};
+  const name = String(payload.name ?? '').trim();
+  const accountType = String(payload.accountType ?? '').trim();
+  const balanceString = String(payload.balance ?? '').trim();
+  const parsedBalance = Number(balanceString);
+
+  if (!name) {
+    errors.name = 'Укажите название.';
+  }
+
+  if (!accountType) {
+    errors.accountType = 'Выберите тип средства.';
+  } else if (!ACCOUNT_TYPE_VALUES.has(accountType)) {
+    errors.accountType = 'Выберите тип из списка.';
+  }
+
+  if (!balanceString) {
+    errors.balance = 'Укажите текущую сумму.';
+  } else if (!Number.isFinite(parsedBalance)) {
+    errors.balance = 'Укажите корректную сумму.';
+  }
+
+  return errors;
+}
+
+/**
+ * Собирает объект средства из данных формы.
+ */
+export function buildAccountFromPayload(payload, existingAccount = null) {
+  const now = new Date().toISOString();
+  const parsedBalance = Number(String(payload.balance ?? '').trim());
+
+  if (existingAccount) {
+    return {
+      ...existingAccount,
+      name: String(payload.name ?? '').trim(),
+      accountType: String(payload.accountType ?? '').trim(),
+      balance: parsedBalance,
+      comment: String(payload.comment ?? '').trim(),
+      updatedAt: now,
+    };
+  }
+
+  return {
+    ...createAccountShape(),
+    id: generateId('account'),
+    name: String(payload.name ?? '').trim(),
+    accountType: String(payload.accountType ?? '').trim(),
+    balance: parsedBalance,
+    comment: String(payload.comment ?? '').trim(),
+    isHidden: false,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+/**
+ * Нормализует массив средств после загрузки.
+ */
+export function normalizeAccounts(accounts) {
+  if (!Array.isArray(accounts)) {
+    return [];
+  }
+
+  return accounts
+    .filter((item) => item && typeof item === 'object' && item.id)
+    .map((item) => ({
+      ...createAccountShape(),
+      ...structuredClone(item),
+      name: String(item.name ?? '').trim(),
+      accountType: ACCOUNT_TYPE_VALUES.has(item.accountType) ? item.accountType : null,
+      balance: Number.isFinite(Number(item.balance)) ? Number(item.balance) : 0,
+      comment: String(item.comment ?? '').trim(),
+      isHidden: Boolean(item.isHidden),
+    }));
+}
+
+/**
+ * Нормализует раздел «Мои средства».
+ */
+export function normalizeMyAssets(myAssets) {
+  const defaults = createDefaultMyAssets();
+
+  if (!myAssets || typeof myAssets !== 'object') {
+    return structuredClone(defaults);
+  }
+
+  return {
+    accounts: normalizeAccounts(myAssets.accounts),
+    snapshots: Array.isArray(myAssets.snapshots)
+      ? structuredClone(myAssets.snapshots)
+      : [],
+  };
+}
+
+/**
+ * Возвращает активные (не отключённые) средства.
+ */
+export function getActiveAccounts(state) {
+  return (state.myAssets?.accounts ?? []).filter((account) => !account.isHidden);
+}
+
+/**
+ * Общая сумма остатков всех активных средств (раздел 14 ТЗ).
+ */
+export function calculateTotalActiveAssets(state) {
+  return getActiveAccounts(state).reduce(
+    (total, account) => total + Number(account.balance ?? 0),
+    0,
+  );
+}
+
+/**
+ * Суммы остатков активных средств по каждому типу.
+ */
+export function calculateAssetsTotalsByType(state) {
+  const totals = Object.fromEntries(
+    Object.values(ACCOUNT_TYPES).map((type) => [type, 0]),
+  );
+
+  getActiveAccounts(state).forEach((account) => {
+    if (account.accountType && Object.hasOwn(totals, account.accountType)) {
+      totals[account.accountType] += Number(account.balance ?? 0);
+    }
+  });
+
+  return totals;
 }
 
 /**
@@ -1719,7 +1869,7 @@ export function normalizeAppState(rawState) {
     references: mergeReferences(defaults.references, migrated.references),
     currentBudget: deepMerge(defaults.currentBudget, migrated.currentBudget),
     templates: normalizeTemplates(migrated.templates),
-    myAssets: deepMerge(defaults.myAssets, migrated.myAssets),
+    myAssets: normalizeMyAssets(deepMerge(defaults.myAssets, migrated.myAssets)),
     notifications: deepMerge(defaults.notifications, migrated.notifications),
     reports: deepMerge(defaults.reports, migrated.reports),
     ui: {
