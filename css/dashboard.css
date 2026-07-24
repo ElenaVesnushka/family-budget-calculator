@@ -104,23 +104,35 @@
   letter-spacing: 0.03em;
 }
 
+.dashboard-mood__state {
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+}
+
 .dashboard-mood__text {
   margin: 0;
   font-size: var(--font-size-lg);
   line-height: 1.5;
 }
 
-.dashboard-mood--positive {
+.dashboard-mood--stable {
   border-color: var(--color-income);
   background-color: var(--color-income-subtle);
 }
 
-.dashboard-mood--warning {
+.dashboard-mood--attention {
   border-color: var(--color-warning);
   background-color: var(--color-warning-subtle);
 }
 
-.dashboard-mood--negative {
+.dashboard-mood--alert {
+  border-color: var(--color-alert);
+  background-color: var(--color-alert-subtle);
+}
+
+.dashboard-mood--critical {
   border-color: var(--color-expense);
   background-color: var(--color-expense-subtle);
 }

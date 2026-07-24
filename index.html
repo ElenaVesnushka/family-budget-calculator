@@ -107,6 +107,14 @@
                   <p class="dashboard-mood__text">—</p>
                 </div>
                 <div class="dashboard__grid">
+                  <article class="dashboard-card" data-card="period-balance">
+                    <header class="dashboard-card__header">
+                      <h3 class="dashboard-card__title" id="dashboard-card-title-period-balance">Баланс периода</h3>
+                    </header>
+                    <div class="dashboard-card__body" data-card-content="period-balance" aria-labelledby="dashboard-card-title-period-balance">
+                      <div class="dashboard-card__placeholder"></div>
+                    </div>
+                  </article>
                   <article class="dashboard-card dashboard-card--reserve" data-card="my-reserve">
                     <header class="dashboard-card__header">
                       <h3 class="dashboard-card__title" id="dashboard-card-title-my-reserve">Мой запас</h3>
@@ -334,7 +342,7 @@
           <header class="app-section__header">
             <h2 class="app-section__title" id="section-title-cushion">Финансовая подушка</h2>
             <p class="app-section__description">
-              Контроль финансовой устойчивости, размера подушки и показателя «Мой запас».
+              Минимальный безопасный уровень средств и показатель «Мой запас».
             </p>
           </header>
           <div class="app-section__content">
@@ -439,7 +447,7 @@
 
   </div>
 
-  <script type="module" src="js/app.js?v=20260724-14"></script>
+  <script type="module" src="js/app.js?v=20260724-16"></script>
   <script type="module" src="js/incomes.js"></script>
 </body>
 </html>

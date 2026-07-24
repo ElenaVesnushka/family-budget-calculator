@@ -7,7 +7,9 @@ import {
   calculateCurrentPeriodExpensesTotal,
   calculateCurrentPeriodIncomesTotal,
   calculateFinancialReserveSnapshot,
-  determineFinancialMoodGroup,
+  calculatePeriodBalance,
+  determineFinancialMoodState,
+  getFinancialMoodStateLabel,
   getReferenceName,
   INCOME_TYPES,
   pickFinancialMoodPhrase,
@@ -23,7 +25,7 @@ const INCOME_TYPE_LABELS = {
 };
 
 let stateUpdateListenerAttached = false;
-let lastMoodGroup = null;
+let lastMoodState = null;
 let lastMoodPhrase = null;
 
 /**
@@ -73,6 +75,7 @@ function renderDashboard() {
   }
 
   renderMood(region);
+  renderCard(region, 'period-balance', renderPeriodBalanceContent);
   renderCard(region, 'my-reserve', renderMyReserveContent);
   renderCard(region, 'incomes', renderIncomesContent);
   renderCard(region, 'expenses', renderExpensesContent);
@@ -88,17 +91,32 @@ function renderMood(region) {
   }
 
   const state = getAppState();
-  const group = determineFinancialMoodGroup(state);
+  const moodState = determineFinancialMoodState(state);
 
-  if (group !== lastMoodGroup) {
-    lastMoodGroup = group;
+  if (moodState !== lastMoodState) {
+    lastMoodState = moodState;
     lastMoodPhrase = pickFinancialMoodPhrase(state);
   }
 
-  moodRegion.className = `dashboard-mood dashboard-mood--${group}`;
+  moodRegion.className = `dashboard-mood dashboard-mood--${moodState}`;
   moodRegion.innerHTML = `
     <p class="dashboard-mood__label">Финансовое настроение</p>
+    <p class="dashboard-mood__state">${escapeHtml(getFinancialMoodStateLabel(moodState))}</p>
     <p class="dashboard-mood__text">${lastMoodPhrase ? escapeHtml(lastMoodPhrase) : '—'}</p>
+  `;
+}
+
+function renderPeriodBalanceContent() {
+  const balance = calculatePeriodBalance(getAppState());
+  const balanceClass = balance < 0
+    ? 'dashboard-metric--negative'
+    : 'dashboard-metric--positive';
+
+  return `
+    <div class="dashboard-metric ${balanceClass}">
+      <p class="dashboard-metric__value">${formatAmount(balance)}</p>
+      <p class="dashboard-metric__hint">Подтверждённые доходы минус подтверждённые расходы периода</p>
+    </div>
   `;
 }
 
@@ -113,8 +131,8 @@ function renderMyReserveContent() {
       <p class="dashboard-metric__value">${formatAmount(snapshot.myReserve)}</p>
       <p class="dashboard-metric__hint">
         ${snapshot.cushion.enabled
-    ? `Доступно: ${formatAmount(snapshot.availableFunds)} · Подушка: ${formatAmount(snapshot.targetAmount)}`
-    : 'Подушка отключена'}
+    ? `Средства сверх безопасного уровня · Общие: ${formatAmount(snapshot.totalFunds)}`
+    : 'Подушка отключена · равен общим средствам'}
       </p>
     </div>
   `;
@@ -149,7 +167,7 @@ function renderCushionContent() {
     return `
       <div class="dashboard-metric">
         <p class="dashboard-metric__value">Отключена</p>
-        <p class="dashboard-metric__hint">Настройте финансовую подушку в соответствующем разделе</p>
+        <p class="dashboard-metric__hint">Задайте минимальный безопасный уровень в разделе «Финансовая подушка»</p>
       </div>
     `;
   }
@@ -157,7 +175,7 @@ function renderCushionContent() {
   return `
     <div class="dashboard-metric">
       <p class="dashboard-metric__value">${formatAmount(snapshot.targetAmount)}</p>
-      <p class="dashboard-metric__hint">Целевая сумма · ${Math.round(snapshot.achievementPercent)}% достигнуто</p>
+      <p class="dashboard-metric__hint">Минимальный безопасный уровень · покрытие ${Math.round(snapshot.achievementPercent)}%</p>
       <div class="dashboard-progress">
         <div class="dashboard-progress__bar">
           <span class="dashboard-progress__fill" style="width: ${Math.min(100, snapshot.achievementPercent)}%"></span>
@@ -165,8 +183,8 @@ function renderCushionContent() {
       </div>
       <p class="dashboard-metric__sub">
         ${snapshot.remainderToGoal > 0
-    ? `Остаток до цели: ${formatAmount(snapshot.remainderToGoal)}`
-    : `Мой запас: ${formatAmount(snapshot.myReserve)}`}
+    ? `До безопасного уровня: ${formatAmount(snapshot.remainderToGoal)}`
+    : `Безопасный уровень соблюдён · Мой запас: ${formatAmount(snapshot.myReserve)}`}
       </p>
     </div>
   `;

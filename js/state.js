@@ -7,7 +7,7 @@
  * — myAssets (мои средства).
  */
 
-export const APP_STATE_VERSION = '1.0.0';
+export const APP_STATE_VERSION = '1.1.0';
 
 export const SECTION_IDS = [
   'dashboard',
@@ -50,6 +50,12 @@ export const ACCOUNT_TYPES = {
   DEPOSIT: 'deposit',
   CASH: 'cash',
   CUSTOM: 'custom',
+};
+
+/** Назначение средства (раздел 14 ТЗ). Независимо от типа счёта. */
+export const ACCOUNT_PURPOSES = {
+  CURRENT: 'current',
+  RESERVE: 'reserve',
 };
 
 export const NOTIFICATION_TYPES = {
@@ -130,7 +136,7 @@ function createDefaultSettings() {
       positive: [],
       warning: [],
       neutral: [],
-      negative: [],
+      critical: [],
     },
   };
 }
@@ -1630,6 +1636,7 @@ export function normalizeTemplates(templates) {
 }
 
 const ACCOUNT_TYPE_VALUES = new Set(Object.values(ACCOUNT_TYPES));
+const ACCOUNT_PURPOSE_VALUES = new Set(Object.values(ACCOUNT_PURPOSES));
 
 const ACCOUNT_TYPE_LABELS = {
   [ACCOUNT_TYPES.BANK_ACCOUNT]: 'Банковский счёт',
@@ -1637,6 +1644,11 @@ const ACCOUNT_TYPE_LABELS = {
   [ACCOUNT_TYPES.DEPOSIT]: 'Вклад',
   [ACCOUNT_TYPES.CASH]: 'Наличные',
   [ACCOUNT_TYPES.CUSTOM]: 'Пользовательский счёт',
+};
+
+const ACCOUNT_PURPOSE_LABELS = {
+  [ACCOUNT_PURPOSES.CURRENT]: 'Текущие средства',
+  [ACCOUNT_PURPOSES.RESERVE]: 'Финансовые запасы',
 };
 
 /**
@@ -1647,6 +1659,21 @@ export function getAccountTypeLabel(accountType) {
 }
 
 /**
+ * Возвращает читаемое название назначения средства.
+ */
+export function getAccountPurposeLabel(purpose) {
+  return ACCOUNT_PURPOSE_LABELS[purpose] ?? purpose ?? '—';
+}
+
+/**
+ * Нормализует назначение средства.
+ * Средства без purpose считаются текущими (миграция существующих данных).
+ */
+export function normalizeAccountPurpose(purpose) {
+  return ACCOUNT_PURPOSE_VALUES.has(purpose) ? purpose : ACCOUNT_PURPOSES.CURRENT;
+}
+
+/**
  * Шаблон счёта (раздел 14 ТЗ).
  */
 export function createAccountShape() {
@@ -1654,6 +1681,7 @@ export function createAccountShape() {
     id: null,
     name: '',
     accountType: null,
+    purpose: ACCOUNT_PURPOSES.CURRENT,
     balance: 0,
     comment: '',
     isHidden: false,
@@ -1669,6 +1697,7 @@ export function validateAccountPayload(payload) {
   const errors = {};
   const name = String(payload.name ?? '').trim();
   const accountType = String(payload.accountType ?? '').trim();
+  const purpose = String(payload.purpose ?? '').trim();
   const balanceString = String(payload.balance ?? '').trim();
   const parsedBalance = Number(balanceString);
 
@@ -1680,6 +1709,12 @@ export function validateAccountPayload(payload) {
     errors.accountType = 'Выберите тип средства.';
   } else if (!ACCOUNT_TYPE_VALUES.has(accountType)) {
     errors.accountType = 'Выберите тип из списка.';
+  }
+
+  if (!purpose) {
+    errors.purpose = 'Выберите назначение средства.';
+  } else if (!ACCOUNT_PURPOSE_VALUES.has(purpose)) {
+    errors.purpose = 'Выберите назначение из списка.';
   }
 
   if (!balanceString) {
@@ -1697,12 +1732,14 @@ export function validateAccountPayload(payload) {
 export function buildAccountFromPayload(payload, existingAccount = null) {
   const now = new Date().toISOString();
   const parsedBalance = Number(String(payload.balance ?? '').trim());
+  const purpose = normalizeAccountPurpose(String(payload.purpose ?? '').trim());
 
   if (existingAccount) {
     return {
       ...existingAccount,
       name: String(payload.name ?? '').trim(),
       accountType: String(payload.accountType ?? '').trim(),
+      purpose,
       balance: parsedBalance,
       comment: String(payload.comment ?? '').trim(),
       updatedAt: now,
@@ -1714,6 +1751,7 @@ export function buildAccountFromPayload(payload, existingAccount = null) {
     id: generateId('account'),
     name: String(payload.name ?? '').trim(),
     accountType: String(payload.accountType ?? '').trim(),
+    purpose,
     balance: parsedBalance,
     comment: String(payload.comment ?? '').trim(),
     isHidden: false,
@@ -1724,6 +1762,7 @@ export function buildAccountFromPayload(payload, existingAccount = null) {
 
 /**
  * Нормализует массив средств после загрузки.
+ * Средства без purpose получают назначение «Текущие средства».
  */
 export function normalizeAccounts(accounts) {
   if (!Array.isArray(accounts)) {
@@ -1737,6 +1776,7 @@ export function normalizeAccounts(accounts) {
       ...structuredClone(item),
       name: String(item.name ?? '').trim(),
       accountType: ACCOUNT_TYPE_VALUES.has(item.accountType) ? item.accountType : null,
+      purpose: normalizeAccountPurpose(item.purpose),
       balance: Number.isFinite(Number(item.balance)) ? Number(item.balance) : 0,
       comment: String(item.comment ?? '').trim(),
       isHidden: Boolean(item.isHidden),
@@ -1769,13 +1809,41 @@ export function getActiveAccounts(state) {
 }
 
 /**
- * Общая сумма остатков всех активных средств (раздел 14 ТЗ).
+ * Сумма остатков активных средств с указанным назначением.
+ */
+function sumActiveAccountsByPurpose(state, purpose) {
+  return getActiveAccounts(state)
+    .filter((account) => normalizeAccountPurpose(account.purpose) === purpose)
+    .reduce((total, account) => total + Number(account.balance ?? 0), 0);
+}
+
+/**
+ * Текущие средства — сумма активных средств с назначением «Текущие средства».
+ */
+export function calculateCurrentFunds(state) {
+  return sumActiveAccountsByPurpose(state, ACCOUNT_PURPOSES.CURRENT);
+}
+
+/**
+ * Финансовые запасы — сумма активных средств с назначением «Финансовые запасы».
+ */
+export function calculateReserveFunds(state) {
+  return sumActiveAccountsByPurpose(state, ACCOUNT_PURPOSES.RESERVE);
+}
+
+/**
+ * Общие средства = Текущие средства + Финансовые запасы.
+ */
+export function calculateTotalFunds(state) {
+  return calculateCurrentFunds(state) + calculateReserveFunds(state);
+}
+
+/**
+ * @deprecated Используйте calculateTotalFunds.
+ * Сохранено для совместимости внутренних вызовов.
  */
 export function calculateTotalActiveAssets(state) {
-  return getActiveAccounts(state).reduce(
-    (total, account) => total + Number(account.balance ?? 0),
-    0,
-  );
+  return calculateTotalFunds(state);
 }
 
 /**
@@ -1795,17 +1863,83 @@ export function calculateAssetsTotalsByType(state) {
   return totals;
 }
 
+/**
+ * Суммы активных средств по назначению.
+ */
+export function calculateAssetsTotalsByPurpose(state) {
+  return {
+    [ACCOUNT_PURPOSES.CURRENT]: calculateCurrentFunds(state),
+    [ACCOUNT_PURPOSES.RESERVE]: calculateReserveFunds(state),
+    total: calculateTotalFunds(state),
+  };
+}
+
 const CUSHION_METHOD_LABELS = {
   [CUSHION_CALCULATION_METHODS.FIXED]: 'Фиксированная сумма',
   [CUSHION_CALCULATION_METHODS.INCOME_PERCENT]: 'Процент от доходов',
-  [CUSHION_CALCULATION_METHODS.ASSETS_PERCENT]: 'Процент от общего объёма средств',
+  [CUSHION_CALCULATION_METHODS.ASSETS_PERCENT]: 'Процент от общих средств',
 };
 
-const MOOD_GROUPS = {
+/** Состояния финансового настроения на главном экране. */
+export const FINANCIAL_MOOD_STATES = {
+  STABLE: 'stable',
+  ATTENTION: 'attention',
+  ALERT: 'alert',
+  CRITICAL: 'critical',
+};
+
+/** Группы фраз финансового настроения (раздел 16–17 ТЗ). */
+export const FINANCIAL_MOOD_PHRASE_GROUPS = {
   POSITIVE: 'positive',
-  WARNING: 'warning',
   NEUTRAL: 'neutral',
-  NEGATIVE: 'negative',
+  WARNING: 'warning',
+  CRITICAL: 'critical',
+};
+
+const MOOD_STATE_LABELS = {
+  [FINANCIAL_MOOD_STATES.STABLE]: 'Стабильное',
+  [FINANCIAL_MOOD_STATES.ATTENTION]: 'Внимание',
+  [FINANCIAL_MOOD_STATES.ALERT]: 'Требует внимания',
+  [FINANCIAL_MOOD_STATES.CRITICAL]: 'Критическое',
+};
+
+/** Доля подушки, ниже которой «Мой запас» считается близким к нулю. */
+const NEAR_ZERO_RESERVE_RATIO = 0.1;
+
+const STATE_PHRASE_GROUPS = {
+  [FINANCIAL_MOOD_STATES.STABLE]: [
+    FINANCIAL_MOOD_PHRASE_GROUPS.POSITIVE,
+    FINANCIAL_MOOD_PHRASE_GROUPS.NEUTRAL,
+  ],
+  [FINANCIAL_MOOD_STATES.ATTENTION]: [
+    FINANCIAL_MOOD_PHRASE_GROUPS.NEUTRAL,
+    FINANCIAL_MOOD_PHRASE_GROUPS.WARNING,
+  ],
+  [FINANCIAL_MOOD_STATES.ALERT]: [
+    FINANCIAL_MOOD_PHRASE_GROUPS.WARNING,
+  ],
+  [FINANCIAL_MOOD_STATES.CRITICAL]: [
+    FINANCIAL_MOOD_PHRASE_GROUPS.CRITICAL,
+  ],
+};
+
+const SYSTEM_MOOD_PHRASES = {
+  [FINANCIAL_MOOD_PHRASE_GROUPS.POSITIVE]: [
+    'Финансовое состояние выглядит устойчивым.',
+    'Минимальный безопасный уровень средств соблюдается.',
+  ],
+  [FINANCIAL_MOOD_PHRASE_GROUPS.NEUTRAL]: [
+    'Ситуация спокойная. Можно продолжать в привычном ритме.',
+    'Показатели находятся в обычном диапазоне.',
+  ],
+  [FINANCIAL_MOOD_PHRASE_GROUPS.WARNING]: [
+    'Стоит внимательнее следить за расходами и запасом средств.',
+    'Запас относительно безопасного уровня снизился.',
+  ],
+  [FINANCIAL_MOOD_PHRASE_GROUPS.CRITICAL]: [
+    'Финансовые показатели требуют внимания.',
+    'Полезно пересмотреть расходы или размер финансовой подушки.',
+  ],
 };
 
 /**
@@ -1813,6 +1947,31 @@ const MOOD_GROUPS = {
  */
 export function getCushionMethodLabel(method) {
   return CUSHION_METHOD_LABELS[method] ?? '—';
+}
+
+/**
+ * Человекочитаемое название состояния финансового настроения.
+ */
+export function getFinancialMoodStateLabel(stateId) {
+  return MOOD_STATE_LABELS[stateId] ?? '—';
+}
+
+/**
+ * Нормализует пользовательские фразы настроения.
+ * Поддерживает миграцию устаревшего ключа negative → critical.
+ */
+export function normalizeMoodPhrases(moodPhrases) {
+  const source = moodPhrases && typeof moodPhrases === 'object' ? moodPhrases : {};
+  const criticalSource = Array.isArray(source.critical)
+    ? source.critical
+    : (Array.isArray(source.negative) ? source.negative : []);
+
+  return {
+    positive: Array.isArray(source.positive) ? source.positive.map((item) => String(item ?? '')) : [],
+    neutral: Array.isArray(source.neutral) ? source.neutral.map((item) => String(item ?? '')) : [],
+    warning: Array.isArray(source.warning) ? source.warning.map((item) => String(item ?? '')) : [],
+    critical: criticalSource.map((item) => String(item ?? '')),
+  };
 }
 
 /**
@@ -1852,6 +2011,15 @@ export function calculateCurrentPeriodIncomesTotal(state, referenceDate = new Da
 export function calculateCurrentPeriodExpensesTotal(state, referenceDate = new Date()) {
   return getCurrentFinancialPeriodExpenses(state, referenceDate)
     .reduce((total, expense) => total + Number(expense.amount ?? 0), 0);
+}
+
+/**
+ * Баланс периода = доходы периода − расходы периода.
+ * Не зависит от «Мои средства», вкладов и финансовой подушки.
+ */
+export function calculatePeriodBalance(state, referenceDate = new Date()) {
+  return calculateCurrentPeriodIncomesTotal(state, referenceDate)
+    - calculateCurrentPeriodExpensesTotal(state, referenceDate);
 }
 
 /**
@@ -1924,7 +2092,7 @@ export function validateFinancialCushionPayload(payload) {
     const percent = Number(String(payload.assetsPercent ?? '').trim());
 
     if (!String(payload.assetsPercent ?? '').trim()) {
-      errors.assetsPercent = 'Укажите процент от общего объёма средств.';
+      errors.assetsPercent = 'Укажите процент от общих средств.';
     } else if (!Number.isFinite(percent) || percent < 0 || percent > 100) {
       errors.assetsPercent = 'Процент должен быть от 0 до 100.';
     }
@@ -1953,13 +2121,6 @@ export function buildFinancialCushionFromPayload(payload, existingCushion = null
 }
 
 /**
- * Доступные средства для расчёта «Мой запас» (активные средства, раздел 14 ТЗ).
- */
-export function calculateAvailableFunds(state) {
-  return calculateTotalActiveAssets(state);
-}
-
-/**
  * Рассчитывает целевой размер финансовой подушки.
  */
 export function calculateCushionAmount(state, referenceDate = new Date()) {
@@ -1979,8 +2140,8 @@ export function calculateCushionAmount(state, referenceDate = new Date()) {
   }
 
   if (cushion.calculationMethod === CUSHION_CALCULATION_METHODS.ASSETS_PERCENT) {
-    const assetsTotal = calculateTotalActiveAssets(state);
-    return (assetsTotal * cushion.assetsPercent) / 100;
+    const totalFunds = calculateTotalFunds(state);
+    return (totalFunds * cushion.assetsPercent) / 100;
   }
 
   return 0;
@@ -1988,12 +2149,13 @@ export function calculateCushionAmount(state, referenceDate = new Date()) {
 
 /**
  * Рассчитывает показатель «Мой запас» (раздел 13 ТЗ).
+ * Мой запас = Общие средства − Финансовая подушка.
  */
 export function calculateMyReserve(state, referenceDate = new Date()) {
-  const availableFunds = calculateAvailableFunds(state);
+  const totalFunds = calculateTotalFunds(state);
   const cushionAmount = calculateCushionAmount(state, referenceDate);
 
-  return availableFunds - cushionAmount;
+  return totalFunds - cushionAmount;
 }
 
 /**
@@ -2001,74 +2163,106 @@ export function calculateMyReserve(state, referenceDate = new Date()) {
  */
 export function calculateFinancialReserveSnapshot(state, referenceDate = new Date()) {
   const cushion = normalizeFinancialCushion(state.financialCushion);
-  const availableFunds = calculateAvailableFunds(state);
+  const currentFunds = calculateCurrentFunds(state);
+  const reserveFunds = calculateReserveFunds(state);
+  const totalFunds = calculateTotalFunds(state);
   const targetAmount = calculateCushionAmount(state, referenceDate);
-  const myReserve = availableFunds - targetAmount;
-  const currentCoverage = Math.min(availableFunds, targetAmount);
+  const myReserve = totalFunds - targetAmount;
+  const currentCoverage = Math.min(totalFunds, targetAmount);
   const achievementPercent = targetAmount > 0
-    ? Math.min(100, (availableFunds / targetAmount) * 100)
+    ? Math.min(100, (totalFunds / targetAmount) * 100)
     : (cushion.enabled ? 100 : 0);
-  const remainderToGoal = Math.max(0, targetAmount - availableFunds);
+  const remainderToGoal = Math.max(0, targetAmount - totalFunds);
   const periodIncomesTotal = calculateCurrentPeriodIncomesTotal(state, referenceDate);
+  const periodExpensesTotal = calculateCurrentPeriodExpensesTotal(state, referenceDate);
+  const periodBalance = periodIncomesTotal - periodExpensesTotal;
 
   return {
     cushion,
-    availableFunds,
+    currentFunds,
+    reserveFunds,
+    totalFunds,
     targetAmount,
     currentCoverage,
     achievementPercent,
     remainderToGoal,
     myReserve,
     periodIncomesTotal,
+    periodExpensesTotal,
+    periodBalance,
   };
 }
 
 /**
- * Определяет группу финансового настроения.
+ * Определяет, близок ли «Мой запас» к нулю относительно подушки.
  */
-export function determineFinancialMoodGroup(state, referenceDate = new Date()) {
-  const snapshot = calculateFinancialReserveSnapshot(state, referenceDate);
-
-  if (!snapshot.cushion.enabled) {
-    return snapshot.availableFunds > 0 ? MOOD_GROUPS.NEUTRAL : MOOD_GROUPS.NEUTRAL;
+function isMyReserveNearZero(myReserve, cushionAmount) {
+  if (!(myReserve > 0) || !(cushionAmount > 0)) {
+    return false;
   }
 
-  if (snapshot.myReserve < 0) {
-    return MOOD_GROUPS.NEGATIVE;
-  }
-
-  if (snapshot.achievementPercent >= 100 && snapshot.myReserve >= 0) {
-    return MOOD_GROUPS.POSITIVE;
-  }
-
-  if (snapshot.remainderToGoal > 0 || snapshot.myReserve < snapshot.targetAmount * 0.2) {
-    return MOOD_GROUPS.WARNING;
-  }
-
-  return MOOD_GROUPS.NEUTRAL;
+  return myReserve <= cushionAmount * NEAR_ZERO_RESERVE_RATIO;
 }
 
 /**
- * Выбирает фразу финансового настроения из настроек пользователя.
+ * Определяет состояние финансового настроения.
+ * Учитывает баланс периода, «Мой запас» и финансовую подушку.
+ */
+export function determineFinancialMoodState(state, referenceDate = new Date()) {
+  const snapshot = calculateFinancialReserveSnapshot(state, referenceDate);
+  const { myReserve, periodBalance, targetAmount, cushion } = snapshot;
+  const cushionAmount = cushion.enabled ? targetAmount : 0;
+
+  if (periodBalance < 0 || myReserve < 0) {
+    return FINANCIAL_MOOD_STATES.CRITICAL;
+  }
+
+  if (isMyReserveNearZero(myReserve, cushionAmount)) {
+    return FINANCIAL_MOOD_STATES.ALERT;
+  }
+
+  if (cushion.enabled && cushionAmount > 0 && myReserve < cushionAmount) {
+    return FINANCIAL_MOOD_STATES.ATTENTION;
+  }
+
+  return FINANCIAL_MOOD_STATES.STABLE;
+}
+
+/**
+ * Определяет группу фраз для текущего состояния настроения.
+ */
+export function determineFinancialMoodGroup(state, referenceDate = new Date()) {
+  const moodState = determineFinancialMoodState(state, referenceDate);
+  return STATE_PHRASE_GROUPS[moodState]?.[0] ?? FINANCIAL_MOOD_PHRASE_GROUPS.NEUTRAL;
+}
+
+/**
+ * Выбирает фразу финансового настроения из пользовательских или системных фраз.
  */
 export function pickFinancialMoodPhrase(state, referenceDate = new Date()) {
-  const group = determineFinancialMoodGroup(state, referenceDate);
-  const phrases = state.settings?.moodPhrases?.[group] ?? [];
+  const moodState = determineFinancialMoodState(state, referenceDate);
+  const groups = STATE_PHRASE_GROUPS[moodState] ?? [FINANCIAL_MOOD_PHRASE_GROUPS.NEUTRAL];
+  const userPhrases = normalizeMoodPhrases(state.settings?.moodPhrases);
 
-  if (!Array.isArray(phrases) || phrases.length === 0) {
-    return null;
+  for (const group of groups) {
+    const available = (userPhrases[group] ?? [])
+      .map((phrase) => String(phrase ?? '').trim())
+      .filter(Boolean);
+
+    if (available.length > 0) {
+      return available[Math.floor(Math.random() * available.length)];
+    }
   }
 
-  const available = phrases
-    .map((phrase) => String(phrase ?? '').trim())
-    .filter(Boolean);
+  for (const group of groups) {
+    const systemPhrases = SYSTEM_MOOD_PHRASES[group] ?? [];
 
-  if (available.length === 0) {
-    return null;
+    if (systemPhrases.length > 0) {
+      return systemPhrases[Math.floor(Math.random() * systemPhrases.length)];
+    }
   }
 
-  const index = Math.floor(Math.random() * available.length);
-  return available[index];
+  return null;
 }
 
 /**
@@ -2118,6 +2312,10 @@ function migrateLegacyState(rawState) {
     delete migrated.settings.customExpenseArticles;
   }
 
+  if (migrated.settings?.moodPhrases) {
+    migrated.settings.moodPhrases = normalizeMoodPhrases(migrated.settings.moodPhrases);
+  }
+
   return migrated;
 }
 
@@ -2140,7 +2338,12 @@ export function normalizeAppState(rawState) {
       budgetId: migrated.meta?.budgetId ?? defaults.meta.budgetId,
       createdAt: migrated.meta?.createdAt ?? defaults.meta.createdAt,
     },
-    settings: deepMerge(defaults.settings, migrated.settings),
+    settings: {
+      ...deepMerge(defaults.settings, migrated.settings),
+      moodPhrases: normalizeMoodPhrases(
+        migrated.settings?.moodPhrases ?? defaults.settings.moodPhrases,
+      ),
+    },
     financialCushion: normalizeFinancialCushion(deepMerge(defaults.financialCushion, migrated.financialCushion)),
     references: mergeReferences(defaults.references, migrated.references),
     currentBudget: deepMerge(defaults.currentBudget, migrated.currentBudget),

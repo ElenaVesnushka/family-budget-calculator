@@ -19,7 +19,7 @@ const WORKSPACE_ID = 'cushion-workspace';
 const CUSHION_METHOD_OPTIONS = [
   { value: CUSHION_CALCULATION_METHODS.FIXED, label: 'Фиксированная сумма' },
   { value: CUSHION_CALCULATION_METHODS.INCOME_PERCENT, label: 'Процент от доходов' },
-  { value: CUSHION_CALCULATION_METHODS.ASSETS_PERCENT, label: 'Процент от общего объёма средств' },
+  { value: CUSHION_CALCULATION_METHODS.ASSETS_PERCENT, label: 'Процент от общих средств' },
 ];
 
 let workspace = null;
@@ -91,7 +91,7 @@ export function syncReserveWarnings() {
     showNotification({
       id: 'reserve-negative',
       type: 'warning',
-      message: 'Свободных средств меньше установленной финансовой подушки. Возможно, стоит пересмотреть расходы или изменить размер финансовой подушки.',
+      message: 'Объём общих средств меньше установленной финансовой подушки. Возможно, стоит пересмотреть расходы или изменить размер финансовой подушки.',
     });
   } else if (
     previousMyReserve !== null
@@ -101,7 +101,7 @@ export function syncReserveWarnings() {
     showNotification({
       id: 'reserve-decreasing',
       type: 'warning',
-      message: 'Свободный запас средств уменьшается. Проверьте запланированные расходы.',
+      message: 'Показатель «Мой запас» уменьшается. Проверьте запланированные расходы.',
     });
   }
 
@@ -153,20 +153,22 @@ function renderOverview() {
         <p class="cushion-overview__value ${reserveClass}">${formatAmount(snapshot.myReserve)}</p>
         <p class="cushion-overview__hint">
           ${snapshot.cushion.enabled
-    ? 'Доступные средства минус финансовая подушка'
-    : 'Финансовая подушка отключена — доступны все активные средства'}
+    ? 'Средства сверх минимального безопасного уровня'
+    : 'Финансовая подушка отключена — «Мой запас» равен общим средствам'}
         </p>
       </article>
       <article class="cushion-overview__card">
-        <p class="cushion-overview__label">Доступные средства</p>
-        <p class="cushion-overview__value">${formatAmount(snapshot.availableFunds)}</p>
-        <p class="cushion-overview__hint">Сумма активных средств из раздела «Мои средства»</p>
+        <p class="cushion-overview__label">Общие средства</p>
+        <p class="cushion-overview__value">${formatAmount(snapshot.totalFunds)}</p>
+        <p class="cushion-overview__hint">
+          Текущие: ${formatAmount(snapshot.currentFunds)} · Запасы: ${formatAmount(snapshot.reserveFunds)}
+        </p>
       </article>
       ${snapshot.cushion.enabled ? renderProgressBlock(snapshot) : `
         <article class="cushion-overview__card cushion-overview__card--muted">
           <p class="cushion-overview__label">Финансовая подушка</p>
           <p class="cushion-overview__value">Отключена</p>
-          <p class="cushion-overview__hint">Включите подушку в настройках ниже, чтобы резервировать часть средств</p>
+          <p class="cushion-overview__hint">Включите подушку, чтобы задать минимальный безопасный уровень средств</p>
         </article>
       `}
     </div>
@@ -180,13 +182,13 @@ function renderProgressBlock(snapshot) {
 
   return `
     <article class="cushion-overview__card">
-      <p class="cushion-overview__label">Целевая сумма подушки</p>
+      <p class="cushion-overview__label">Финансовая подушка</p>
       <p class="cushion-overview__value">${formatAmount(snapshot.targetAmount)}</p>
-      <p class="cushion-overview__hint">${escapeHtml(getCushionMethodLabel(snapshot.cushion.calculationMethod))}</p>
+      <p class="cushion-overview__hint">Минимальный безопасный уровень · ${escapeHtml(getCushionMethodLabel(snapshot.cushion.calculationMethod))}</p>
       ${methodHint}
       <div class="cushion-progress">
         <div class="cushion-progress__header">
-          <span>Накоплено: ${formatAmount(snapshot.currentCoverage)}</span>
+          <span>Покрытие уровня: ${formatAmount(snapshot.currentCoverage)}</span>
           <span>${Math.round(snapshot.achievementPercent)}%</span>
         </div>
         <div
@@ -195,14 +197,14 @@ function renderProgressBlock(snapshot) {
           aria-valuemin="0"
           aria-valuemax="100"
           aria-valuenow="${Math.round(snapshot.achievementPercent)}"
-          aria-label="Прогресс достижения финансовой подушки"
+          aria-label="Покрытие минимального безопасного уровня"
         >
           <span class="cushion-progress__fill" style="width: ${Math.min(100, snapshot.achievementPercent)}%"></span>
         </div>
         <p class="cushion-progress__remainder">
           ${snapshot.remainderToGoal > 0
-    ? `Остаток до цели: ${formatAmount(snapshot.remainderToGoal)}`
-    : 'Целевая сумма подушки достигнута'}
+    ? `До безопасного уровня не хватает: ${formatAmount(snapshot.remainderToGoal)}`
+    : 'Минимальный безопасный уровень соблюдён'}
         </p>
       </div>
     </article>
@@ -222,6 +224,7 @@ function renderSettings() {
   region.innerHTML = `
     <section class="cushion-settings">
       <h3 class="cushion-settings__title">Настройки финансовой подушки</h3>
+      <p class="cushion-settings__intro">Финансовая подушка — минимальный безопасный уровень средств. Она используется для оценки состояния, а не как сумма, которую просто вычитают из денег.</p>
       <form class="cushion-settings__form" id="${formId}" novalidate>
         <label class="cushion-settings__toggle">
           <input type="checkbox" name="enabled" ${cushion.enabled ? 'checked' : ''}>
@@ -249,7 +252,7 @@ function renderSettings() {
           <p class="form-field__error" data-error-for="incomePercent" hidden></p>
         </div>
         <div class="form-field" data-cushion-field="assets-percent">
-          <label class="form-field__label" for="cushion-assets-percent">Процент от общего объёма средств</label>
+          <label class="form-field__label" for="cushion-assets-percent">Процент от общих средств</label>
           <input class="form-field__input" type="number" id="cushion-assets-percent" name="assetsPercent" min="0" max="100" step="0.01" inputmode="decimal" value="${escapeHtml(String(cushion.assetsPercent))}">
           <p class="form-field__error" data-error-for="assetsPercent" hidden></p>
         </div>

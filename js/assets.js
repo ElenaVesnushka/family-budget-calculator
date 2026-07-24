@@ -8,10 +8,13 @@ import { getAppState, updateAppState, isStateInitialized } from './state-service
 import { openModal, closeModal } from './modals.js';
 import { showNotification } from './notifications.js';
 import {
+  ACCOUNT_PURPOSES,
   ACCOUNT_TYPES,
   buildAccountFromPayload,
+  calculateAssetsTotalsByPurpose,
   calculateAssetsTotalsByType,
-  calculateTotalActiveAssets,
+  calculateTotalFunds,
+  getAccountPurposeLabel,
   getAccountTypeLabel,
   validateAccountPayload,
 } from './state.js';
@@ -24,6 +27,11 @@ const ACCOUNT_TYPE_OPTIONS = [
   { value: ACCOUNT_TYPES.DEPOSIT, label: 'Вклад' },
   { value: ACCOUNT_TYPES.CASH, label: 'Наличные' },
   { value: ACCOUNT_TYPES.CUSTOM, label: 'Пользовательский счёт' },
+];
+
+const ACCOUNT_PURPOSE_OPTIONS = [
+  { value: ACCOUNT_PURPOSES.CURRENT, label: 'Текущие средства' },
+  { value: ACCOUNT_PURPOSES.RESERVE, label: 'Финансовые запасы' },
 ];
 
 let workspace = null;
@@ -158,9 +166,23 @@ function renderAssetsSummary() {
   }
 
   const state = getAppState();
-  const total = calculateTotalActiveAssets(state);
+  const total = calculateTotalFunds(state);
+  const totalsByPurpose = calculateAssetsTotalsByPurpose(state);
   const totalsByType = calculateAssetsTotalsByType(state);
   const activeCount = state.myAssets.accounts.filter((account) => !account.isHidden).length;
+
+  const purposeRows = ACCOUNT_PURPOSE_OPTIONS
+    .map(({ value, label }) => ({
+      label,
+      amount: totalsByPurpose[value] ?? 0,
+    }))
+    .map(({ label, amount }) => `
+      <li class="assets-summary__type-item">
+        <span class="assets-summary__type-label">${escapeHtml(label)}</span>
+        <span class="assets-summary__type-amount">${formatAmount(amount)}</span>
+      </li>
+    `)
+    .join('');
 
   const typeRows = ACCOUNT_TYPE_OPTIONS
     .map(({ value, label }) => ({ value, label, amount: totalsByType[value] ?? 0 }))
@@ -176,10 +198,13 @@ function renderAssetsSummary() {
   summaryRegion.innerHTML = `
     <article class="assets-summary">
       <div class="assets-summary__total">
-        <p class="assets-summary__label">Общая сумма активных средств</p>
+        <p class="assets-summary__label">Общие средства</p>
         <p class="assets-summary__value">${formatAmount(total)}</p>
         <p class="assets-summary__meta">Активных средств: ${activeCount}</p>
       </div>
+      <ul class="assets-summary__types" aria-label="Суммы по назначению средств">
+        ${purposeRows}
+      </ul>
       ${typeRows ? `
         <ul class="assets-summary__types" aria-label="Суммы по типам средств">
           ${typeRows}
@@ -232,6 +257,7 @@ function renderAssetsList() {
       <tr>
         <th scope="col">Название</th>
         <th scope="col">Тип</th>
+        <th scope="col">Назначение</th>
         <th scope="col">Сумма</th>
         <th scope="col">Статус</th>
         <th scope="col">Комментарий</th>
@@ -264,6 +290,7 @@ function createAccountRow(account) {
   row.innerHTML = `
     <td class="assets-table__name">${escapeHtml(account.name)}</td>
     <td>${escapeHtml(getAccountTypeLabel(account.accountType))}</td>
+    <td>${escapeHtml(getAccountPurposeLabel(account.purpose))}</td>
     <td class="assets-table__amount">${formatAmount(account.balance)}</td>
     <td>
       <span class="assets-table__status ${account.isHidden ? 'assets-table__status--disabled' : 'assets-table__status--active'}">
@@ -350,6 +377,15 @@ function createAccountForm(account = null) {
       <p class="form-field__error" data-error-for="accountType" hidden></p>
     </div>
     <div class="form-field">
+      <label class="form-field__label" for="account-purpose">Назначение</label>
+      <select class="form-field__input" id="account-purpose" name="purpose" required>
+        ${ACCOUNT_PURPOSE_OPTIONS.map(({ value, label }) => `
+          <option value="${escapeHtml(value)}">${escapeHtml(label)}</option>
+        `).join('')}
+      </select>
+      <p class="form-field__error" data-error-for="purpose" hidden></p>
+    </div>
+    <div class="form-field">
       <label class="form-field__label" for="account-balance">Текущая сумма</label>
       <input class="form-field__input" type="number" id="account-balance" name="balance" step="0.01" inputmode="decimal" required>
       <p class="form-field__error" data-error-for="balance" hidden></p>
@@ -367,9 +403,12 @@ function createAccountForm(account = null) {
   if (account) {
     form.querySelector('#account-name').value = account.name;
     form.querySelector('#account-type').value = account.accountType ?? '';
+    form.querySelector('#account-purpose').value = account.purpose ?? ACCOUNT_PURPOSES.CURRENT;
     form.querySelector('#account-balance').value = String(account.balance);
     form.querySelector('#account-comment').value = account.comment ?? '';
     form.dataset.accountId = account.id;
+  } else {
+    form.querySelector('#account-purpose').value = ACCOUNT_PURPOSES.CURRENT;
   }
 
   form.addEventListener('submit', (event) => {
@@ -391,6 +430,7 @@ function handleAccountFormSubmit(form) {
   const payload = {
     name: formData.get('name'),
     accountType: formData.get('accountType'),
+    purpose: formData.get('purpose'),
     balance: formData.get('balance'),
     comment: formData.get('comment'),
   };
