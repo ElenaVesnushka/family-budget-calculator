@@ -547,8 +547,8 @@ function createPlannedExpenseOccurrenceRow(occurrence, categories, articles) {
   return row;
 }
 
-function openAddPlannedExpenseModal() {
-  const form = createPlannedExpenseForm();
+export function openAddPlannedExpenseModal(initialValues = null) {
+  const form = createPlannedExpenseForm(initialValues);
   return openModal({ title: 'Добавить плановый расход', content: form });
 }
 
@@ -568,7 +568,7 @@ function createPlannedExpenseForm(plannedExpense = null) {
   const state = getAppState();
   const categories = getExpenseCategories(state);
   const articles = getAvailableExpenseArticles(state);
-  const isEdit = Boolean(plannedExpense);
+  const isEdit = Boolean(plannedExpense?.id);
   const form = document.createElement('form');
   form.className = 'planned-expenses-form';
   form.noValidate = true;
@@ -632,13 +632,22 @@ function createPlannedExpenseForm(plannedExpense = null) {
   `;
 
   if (plannedExpense) {
-    form.dataset.plannedExpenseId = plannedExpense.id;
-    form.querySelector('#planned-name').value = plannedExpense.name;
-    form.querySelector('#planned-amount').value = String(plannedExpense.amount);
-    form.querySelector('#planned-first-date').value = plannedExpense.firstDate;
+    if (isEdit) {
+      form.dataset.plannedExpenseId = plannedExpense.id;
+    }
+
+    form.querySelector('#planned-name').value = plannedExpense.name ?? '';
+    form.querySelector('#planned-category').value = plannedExpense.categoryId ?? '';
+    form.querySelector('#planned-article').value = plannedExpense.articleId ?? '';
+    form.querySelector('#planned-amount').value = plannedExpense.amount != null ? String(plannedExpense.amount) : '';
+    form.querySelector('#planned-first-date').value = plannedExpense.firstDate ?? formatIsoDate(new Date());
     form.querySelector('#planned-interval-days').value = plannedExpense.recurrence?.intervalDays ?? '';
     form.querySelector('#planned-interval-months').value = plannedExpense.recurrence?.intervalMonths ?? '';
     form.querySelector('#planned-comment').value = plannedExpense.comment ?? '';
+
+    if (plannedExpense.recurrence?.frequency) {
+      form.querySelector('#planned-frequency').value = plannedExpense.recurrence.frequency;
+    }
   } else {
     form.querySelector('#planned-first-date').value = formatIsoDate(new Date());
   }

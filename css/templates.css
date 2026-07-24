@@ -1,0 +1,144 @@
+/**
+ * Стили раздела «Шаблоны».
+ */
+
+.templates {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.templates__toolbar {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.templates__controls {
+  display: grid;
+  grid-template-columns: minmax(12rem, 2fr) minmax(10rem, 1fr) minmax(10rem, 1fr) auto;
+  gap: var(--space-4);
+  align-items: end;
+}
+
+.templates__search {
+  min-width: 0;
+}
+
+.templates__show-disabled {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.75rem;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+}
+
+.templates__list {
+  min-height: 8rem;
+}
+
+.templates__empty {
+  margin: 0;
+  padding: var(--space-6);
+  text-align: center;
+  color: var(--color-text-secondary);
+  background-color: var(--color-bg-subtle);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.templates-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.templates-table thead {
+  background-color: var(--color-bg-subtle);
+}
+
+.templates-table th,
+.templates-table td {
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.templates-table th {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.templates-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.templates-table__row--disabled {
+  opacity: 0.72;
+}
+
+.templates-table__name {
+  font-weight: var(--font-weight-semibold);
+}
+
+.templates-table__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  min-width: 12rem;
+}
+
+.templates-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.templates-form__type-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.template-prompt {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.template-prompt__message {
+  margin: 0;
+  color: var(--color-text);
+  line-height: var(--line-height-relaxed);
+}
+
+@media (max-width: 900px) {
+  .templates__controls {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .templates__controls {
+    grid-template-columns: 1fr;
+  }
+
+  .templates__toolbar .btn {
+    width: 100%;
+  }
+
+  .templates-table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+}

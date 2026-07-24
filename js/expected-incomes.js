@@ -543,8 +543,8 @@ function createExpectedIncomeOccurrenceRow(occurrence) {
   return row;
 }
 
-function openAddExpectedIncomeModal() {
-  const form = createExpectedIncomeForm();
+export function openAddExpectedIncomeModal(initialValues = null) {
+  const form = createExpectedIncomeForm(initialValues);
   return openModal({ title: 'Добавить ожидаемый доход', content: form });
 }
 
@@ -560,7 +560,7 @@ function openEditExpectedIncomeModal(expectedIncomeId) {
 }
 
 function createExpectedIncomeForm(expectedIncome = null) {
-  const isEdit = Boolean(expectedIncome);
+  const isEdit = Boolean(expectedIncome?.id);
   const form = document.createElement('form');
   form.className = 'expected-incomes-form';
   form.noValidate = true;
@@ -617,13 +617,21 @@ function createExpectedIncomeForm(expectedIncome = null) {
   `;
 
   if (expectedIncome) {
-    form.dataset.expectedIncomeId = expectedIncome.id;
-    form.querySelector('#expected-name').value = expectedIncome.name;
-    form.querySelector('#expected-amount').value = String(expectedIncome.amount);
-    form.querySelector('#expected-date').value = expectedIncome.nextOccurrenceDate;
+    if (isEdit) {
+      form.dataset.expectedIncomeId = expectedIncome.id;
+    }
+
+    form.querySelector('#expected-income-type').value = expectedIncome.incomeType ?? '';
+    form.querySelector('#expected-name').value = expectedIncome.name ?? '';
+    form.querySelector('#expected-amount').value = expectedIncome.amount != null ? String(expectedIncome.amount) : '';
+    form.querySelector('#expected-date').value = expectedIncome.nextOccurrenceDate ?? formatIsoDate(new Date());
     form.querySelector('#expected-interval-days').value = expectedIncome.recurrence?.intervalDays ?? '';
     form.querySelector('#expected-interval-months').value = expectedIncome.recurrence?.intervalMonths ?? '';
     form.querySelector('#expected-comment').value = expectedIncome.comment ?? '';
+
+    if (expectedIncome.recurrence?.frequency) {
+      form.querySelector('#expected-frequency').value = expectedIncome.recurrence.frequency;
+    }
   } else {
     form.querySelector('#expected-date').value = formatIsoDate(new Date());
   }

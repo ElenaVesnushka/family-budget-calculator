@@ -38,8 +38,10 @@ export const LIMIT_TYPES = {
 };
 
 export const TEMPLATE_TYPES = {
-  INCOME: 'income',
-  EXPENSE: 'expense',
+  ACTUAL_INCOME: 'actual-income',
+  ACTUAL_EXPENSE: 'actual-expense',
+  EXPECTED_INCOME: 'expected-income',
+  PLANNED_EXPENSE: 'planned-expense',
 };
 
 export const ACCOUNT_TYPES = {
@@ -1376,13 +1378,255 @@ export function createTemplateShape() {
     id: null,
     templateType: null,
     name: '',
+    comment: '',
     isEnabled: true,
     income: null,
     expense: null,
+    expectedIncome: null,
+    plannedExpense: null,
     createdAt: null,
     updatedAt: null,
     lastUsedAt: null,
   };
+}
+
+const TEMPLATE_TYPE_LABELS = {
+  [TEMPLATE_TYPES.ACTUAL_INCOME]: 'Фактический доход',
+  [TEMPLATE_TYPES.ACTUAL_EXPENSE]: 'Фактический расход',
+  [TEMPLATE_TYPES.EXPECTED_INCOME]: 'Ожидаемый доход',
+  [TEMPLATE_TYPES.PLANNED_EXPENSE]: 'Плановый расход',
+};
+
+/**
+ * Человекочитаемый тип шаблона.
+ */
+export function getTemplateTypeLabel(templateType) {
+  if (templateType === 'income') {
+    return TEMPLATE_TYPE_LABELS[TEMPLATE_TYPES.ACTUAL_INCOME];
+  }
+
+  if (templateType === 'expense') {
+    return TEMPLATE_TYPE_LABELS[TEMPLATE_TYPES.ACTUAL_EXPENSE];
+  }
+
+  return TEMPLATE_TYPE_LABELS[templateType] ?? '—';
+}
+
+/**
+ * Нормализует тип шаблона (миграция старых значений).
+ */
+export function normalizeTemplateType(templateType) {
+  if (templateType === 'income') {
+    return TEMPLATE_TYPES.ACTUAL_INCOME;
+  }
+
+  if (templateType === 'expense') {
+    return TEMPLATE_TYPES.ACTUAL_EXPENSE;
+  }
+
+  return templateType;
+}
+
+/**
+ * Валидация данных шаблона.
+ */
+export function validateTemplatePayload(payload, state) {
+  const errors = {};
+  const templateType = normalizeTemplateType(String(payload.templateType ?? '').trim());
+  const name = String(payload.name ?? '').trim();
+  const allowedTypes = Object.values(TEMPLATE_TYPES);
+
+  if (!name) {
+    errors.name = 'Укажите название шаблона.';
+  }
+
+  if (!templateType || !allowedTypes.includes(templateType)) {
+    errors.templateType = 'Выберите тип операции.';
+  }
+
+  if (templateType === TEMPLATE_TYPES.ACTUAL_INCOME) {
+    const incomeType = String(payload.incomeType ?? '').trim();
+    const amount = String(payload.amount ?? '').trim();
+
+    if (!incomeType || !Object.values(INCOME_TYPES).includes(incomeType)) {
+      errors.incomeType = 'Выберите вид дохода.';
+    }
+
+    const parsedAmount = Number(amount);
+
+    if (!amount) {
+      errors.amount = 'Укажите сумму.';
+    } else if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      errors.amount = 'Сумма должна быть больше нуля.';
+    }
+  }
+
+  if (templateType === TEMPLATE_TYPES.ACTUAL_EXPENSE) {
+    Object.assign(errors, validateExpensePayload({
+      categoryId: payload.categoryId,
+      articleId: payload.articleId,
+      date: formatIsoDate(new Date()),
+      amount: payload.amount,
+    }, state));
+    delete errors.date;
+  }
+
+  if (templateType === TEMPLATE_TYPES.EXPECTED_INCOME) {
+    if (!String(payload.operationName ?? '').trim()) {
+      errors.operationName = 'Укажите название операции.';
+    }
+
+    Object.assign(errors, validateExpectedIncomePayload({
+      incomeType: payload.incomeType,
+      name: payload.operationName,
+      amount: payload.amount,
+      nextOccurrenceDate: payload.nextOccurrenceDate,
+      frequency: payload.frequency,
+      intervalDays: payload.intervalDays,
+      intervalMonths: payload.intervalMonths,
+    }));
+    delete errors.name;
+  }
+
+  if (templateType === TEMPLATE_TYPES.PLANNED_EXPENSE) {
+    if (!String(payload.operationName ?? '').trim()) {
+      errors.operationName = 'Укажите название операции.';
+    }
+
+    Object.assign(errors, validatePlannedExpensePayload({
+      name: payload.operationName,
+      categoryId: payload.categoryId,
+      articleId: payload.articleId,
+      amount: payload.amount,
+      firstDate: payload.firstDate,
+      frequency: payload.frequency,
+      intervalDays: payload.intervalDays,
+      intervalMonths: payload.intervalMonths,
+    }, state));
+    delete errors.name;
+  }
+
+  return errors;
+}
+
+/**
+ * Создаёт шаблон из проверенных данных формы.
+ */
+export function buildTemplateFromPayload(payload, now = new Date().toISOString()) {
+  const templateType = normalizeTemplateType(String(payload.templateType).trim());
+  const template = {
+    ...createTemplateShape(),
+    id: generateId('template'),
+    templateType,
+    name: String(payload.name).trim(),
+    comment: String(payload.comment ?? '').trim(),
+    isEnabled: payload.isEnabled !== false,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  switch (templateType) {
+    case TEMPLATE_TYPES.ACTUAL_INCOME:
+      template.income = {
+        incomeType: String(payload.incomeType).trim(),
+        amount: Number(payload.amount),
+        source: String(payload.source ?? '').trim(),
+      };
+      break;
+    case TEMPLATE_TYPES.ACTUAL_EXPENSE:
+      template.expense = {
+        categoryId: String(payload.categoryId).trim(),
+        articleId: String(payload.articleId).trim(),
+        amount: Number(payload.amount),
+        name: String(payload.operationName ?? '').trim(),
+      };
+      break;
+    case TEMPLATE_TYPES.EXPECTED_INCOME:
+      template.expectedIncome = {
+        incomeType: String(payload.incomeType).trim(),
+        name: String(payload.operationName ?? '').trim(),
+        amount: Number(payload.amount),
+        nextOccurrenceDate: String(payload.nextOccurrenceDate).trim(),
+        recurrence: buildRecurrenceFromPayload(payload),
+      };
+      break;
+    case TEMPLATE_TYPES.PLANNED_EXPENSE:
+      template.plannedExpense = {
+        name: String(payload.operationName ?? '').trim(),
+        categoryId: String(payload.categoryId).trim(),
+        articleId: String(payload.articleId).trim(),
+        amount: Number(payload.amount),
+        firstDate: String(payload.firstDate).trim(),
+        recurrence: buildRecurrenceFromPayload(payload),
+      };
+      break;
+    default:
+      break;
+  }
+
+  return template;
+}
+
+/**
+ * Создаёт шаблон фактического дохода из сохранённой операции.
+ */
+export function buildTemplateFromIncome(income, templateName, now = new Date().toISOString()) {
+  return {
+    ...createTemplateShape(),
+    id: generateId('template'),
+    templateType: TEMPLATE_TYPES.ACTUAL_INCOME,
+    name: String(templateName || income.name || 'Доход').trim(),
+    comment: String(income.comment ?? '').trim(),
+    income: {
+      incomeType: income.incomeType,
+      amount: Number(income.amount),
+      source: String(income.name ?? '').trim(),
+    },
+    isEnabled: true,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+/**
+ * Создаёт шаблон фактического расхода из сохранённой операции.
+ */
+export function buildTemplateFromExpense(expense, templateName, now = new Date().toISOString()) {
+  return {
+    ...createTemplateShape(),
+    id: generateId('template'),
+    templateType: TEMPLATE_TYPES.ACTUAL_EXPENSE,
+    name: String(templateName || expense.name || 'Расход').trim(),
+    comment: String(expense.comment ?? '').trim(),
+    expense: {
+      categoryId: expense.categoryId,
+      articleId: expense.articleId,
+      amount: Number(expense.amount),
+      name: String(expense.name ?? '').trim(),
+    },
+    isEnabled: true,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+/**
+ * Нормализует массив шаблонов после загрузки.
+ */
+export function normalizeTemplates(templates) {
+  if (!Array.isArray(templates)) {
+    return [];
+  }
+
+  return templates
+    .filter((item) => item && typeof item === 'object' && item.id)
+    .map((item) => ({
+      ...createTemplateShape(),
+      ...structuredClone(item),
+      templateType: normalizeTemplateType(item.templateType),
+      comment: item.comment ?? '',
+      isEnabled: item.isEnabled !== false,
+    }));
 }
 
 /**
@@ -1474,7 +1718,7 @@ export function normalizeAppState(rawState) {
     financialCushion: deepMerge(defaults.financialCushion, migrated.financialCushion),
     references: mergeReferences(defaults.references, migrated.references),
     currentBudget: deepMerge(defaults.currentBudget, migrated.currentBudget),
-    templates: Array.isArray(migrated.templates) ? migrated.templates : defaults.templates,
+    templates: normalizeTemplates(migrated.templates),
     myAssets: deepMerge(defaults.myAssets, migrated.myAssets),
     notifications: deepMerge(defaults.notifications, migrated.notifications),
     reports: deepMerge(defaults.reports, migrated.reports),

@@ -27,6 +27,7 @@ import { initExpectedIncomes } from './expected-incomes.js';
 import { initExpenses } from './expenses.js';
 import { initLimits } from './limits.js';
 import { initPlannedExpenses } from './planned-expenses.js';
+import { initTemplates } from './templates.js';
 
 export {
   getAppState,
@@ -61,6 +62,10 @@ function bootstrap() {
       if (sectionId === 'limits') {
         initLimits();
       }
+
+      if (sectionId === 'templates') {
+        initTemplates();
+      }
     },
   });
 
@@ -72,6 +77,7 @@ function bootstrap() {
   initExpenses();
   initPlannedExpenses();
   initLimits();
+  initTemplates();
 
   applyTheme(appState.settings.theme);
   showSection(appState.ui.activeSection);

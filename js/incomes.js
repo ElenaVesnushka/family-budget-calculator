@@ -7,6 +7,7 @@ import { getSectionRegion } from './ui.js';
 import { getAppState, updateAppState, isStateInitialized } from './state-service.js';
 import { openModal, closeModal } from './modals.js';
 import { showNotification } from './notifications.js';
+import { offerCreateTemplateFromIncome } from './template-prompt.js';
 import {
   INCOME_TYPES,
   validateIncomePayload,
@@ -230,8 +231,8 @@ function createIncomeRow(income) {
   return row;
 }
 
-function openAddIncomeModal() {
-  const form = createIncomeForm();
+export function openAddIncomeModal(initialValues = {}) {
+  const form = createIncomeForm(initialValues);
 
   const dialog = openModal({
     title: 'Добавить доход',
@@ -248,7 +249,11 @@ function openAddIncomeModal() {
   return dialog;
 }
 
-function createIncomeForm() {
+function openAddIncomeModalLegacy() {
+  return openAddIncomeModal();
+}
+
+function createIncomeForm(initialValues = {}) {
   const form = document.createElement('form');
   form.className = 'incomes-form';
   form.noValidate = true;
@@ -291,7 +296,23 @@ function createIncomeForm() {
   `;
 
   const dateInput = form.querySelector('[name="date"]');
-  dateInput.value = formatIsoDate(new Date());
+  dateInput.value = initialValues.date ?? formatIsoDate(new Date());
+
+  if (initialValues.amount != null && initialValues.amount !== '') {
+    form.querySelector('[name="amount"]').value = String(initialValues.amount);
+  }
+
+  if (initialValues.category) {
+    form.querySelector('[name="category"]').value = initialValues.category;
+  }
+
+  if (initialValues.source) {
+    form.querySelector('[name="source"]').value = initialValues.source;
+  }
+
+  if (initialValues.comment) {
+    form.querySelector('[name="comment"]').value = initialValues.comment;
+  }
 
   form.addEventListener('submit', (event) => {
     event.preventDefault();
@@ -337,6 +358,7 @@ function handleIncomeFormSubmit(form) {
     type: 'info',
     message: 'Доход сохранён.',
   });
+  offerCreateTemplateFromIncome(income);
 }
 
 function clearFormErrors(form) {

@@ -7,6 +7,7 @@ import { getSectionRegion } from './ui.js';
 import { getAppState, updateAppState, isStateInitialized } from './state-service.js';
 import { openModal, closeModal } from './modals.js';
 import { showNotification } from './notifications.js';
+import { offerCreateTemplateFromExpense } from './template-prompt.js';
 import {
   getExpenseCategories,
   getAvailableExpenseArticles,
@@ -225,8 +226,8 @@ function createExpenseRow(expense, categories, articles) {
   return row;
 }
 
-function openAddExpenseModal() {
-  const form = createExpenseForm();
+export function openAddExpenseModal(initialValues = {}) {
+  const form = createExpenseForm(initialValues);
 
   const dialog = openModal({
     title: 'Добавить расход',
@@ -242,17 +243,18 @@ function openAddExpenseModal() {
   return dialog;
 }
 
-function renderSelectOptions(items, placeholder) {
+function renderSelectOptions(items, placeholder, selectedValue = '') {
   const options = [`<option value="">${placeholder}</option>`];
 
   items.forEach(({ id, name }) => {
-    options.push(`<option value="${escapeHtml(id)}">${escapeHtml(name)}</option>`);
+    const selected = id === selectedValue ? ' selected' : '';
+    options.push(`<option value="${escapeHtml(id)}"${selected}>${escapeHtml(name)}</option>`);
   });
 
   return options.join('');
 }
 
-function createExpenseForm() {
+function createExpenseForm(initialValues = {}) {
   const { categories, articles } = getExpenseReferences();
   const form = document.createElement('form');
   form.className = 'expenses-form';
@@ -272,14 +274,14 @@ function createExpenseForm() {
     <div class="form-field">
       <label class="form-field__label" for="expense-article">Статья</label>
       <select class="form-field__input" id="expense-article" name="articleId" required>
-        ${renderSelectOptions(articles, 'Выберите статью')}
+        ${renderSelectOptions(articles, 'Выберите статью', initialValues.articleId)}
       </select>
       <p class="form-field__error" data-error-for="articleId" hidden></p>
     </div>
     <div class="form-field">
       <label class="form-field__label" for="expense-category">Категория</label>
       <select class="form-field__input" id="expense-category" name="categoryId" required>
-        ${renderSelectOptions(categories, 'Выберите категорию')}
+        ${renderSelectOptions(categories, 'Выберите категорию', initialValues.categoryId)}
       </select>
       <p class="form-field__error" data-error-for="categoryId" hidden></p>
     </div>
@@ -299,7 +301,19 @@ function createExpenseForm() {
     </div>
   `;
 
-  form.querySelector('[name="date"]').value = formatIsoDate(new Date());
+  form.querySelector('[name="date"]').value = initialValues.date ?? formatIsoDate(new Date());
+
+  if (initialValues.amount != null && initialValues.amount !== '') {
+    form.querySelector('[name="amount"]').value = String(initialValues.amount);
+  }
+
+  if (initialValues.name) {
+    form.querySelector('[name="name"]').value = initialValues.name;
+  }
+
+  if (initialValues.comment) {
+    form.querySelector('[name="comment"]').value = initialValues.comment;
+  }
 
   form.addEventListener('submit', (event) => {
     event.preventDefault();
@@ -346,6 +360,7 @@ function handleExpenseFormSubmit(form) {
     type: 'info',
     message: 'Расход сохранён.',
   });
+  offerCreateTemplateFromExpense(expense);
 }
 
 function clearFormErrors(form) {
