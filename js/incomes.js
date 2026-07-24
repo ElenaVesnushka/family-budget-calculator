@@ -8,9 +8,10 @@ import { getAppState, updateAppState, isStateInitialized } from './state-service
 import { openModal, closeModal } from './modals.js';
 import { showNotification } from './notifications.js';
 import {
-  generateId,
-  createIncomeShape,
   INCOME_TYPES,
+  validateIncomePayload,
+  buildIncomeFromPayload,
+  formatIsoDate,
 } from './state.js';
 
 const INCOME_TYPE_OPTIONS = [
@@ -26,6 +27,7 @@ const INCOME_TYPE_LABELS = Object.fromEntries(
 const INCOMES_WORKSPACE_ID = 'incomes-workspace';
 
 let workspace = null;
+let stateUpdateListenerAttached = false;
 
 /**
  * Возвращает контейнер раздела «Доходы».
@@ -46,13 +48,80 @@ export function initIncomes() {
 
   workspace.classList.add('app-section__workspace--active');
 
-  if (!workspace.querySelector('.incomes')) {
-    workspace.replaceChildren(createIncomesLayout());
+  if (!workspace.querySelector('.incomes-shell')) {
+    workspace.replaceChildren(createIncomesShell());
   }
 
   if (isStateInitialized()) {
     renderIncomesList();
   }
+
+  attachStateUpdateListener();
+}
+
+function attachStateUpdateListener() {
+  if (stateUpdateListenerAttached) {
+    return;
+  }
+
+  document.addEventListener('appstate:updated', () => {
+    if (workspace && isStateInitialized()) {
+      renderIncomesList();
+    }
+  });
+
+  stateUpdateListenerAttached = true;
+}
+
+function createIncomesShell() {
+  const shell = document.createElement('div');
+  shell.className = 'incomes-shell';
+
+  shell.innerHTML = `
+    <div class="incomes-tabs" role="tablist" aria-label="Виды доходов">
+      <button
+        type="button"
+        class="incomes-tabs__button incomes-tabs__button--active"
+        role="tab"
+        id="incomes-tab-actual"
+        aria-selected="true"
+        aria-controls="incomes-panel-actual"
+        data-incomes-tab="actual"
+      >
+        Фактические
+      </button>
+      <button
+        type="button"
+        class="incomes-tabs__button"
+        role="tab"
+        id="incomes-tab-expected"
+        aria-selected="false"
+        aria-controls="incomes-panel-expected"
+        data-incomes-tab="expected"
+      >
+        Ожидаемые
+      </button>
+    </div>
+    <div
+      class="incomes-panel"
+      id="incomes-panel-actual"
+      data-incomes-panel="actual"
+      role="tabpanel"
+      aria-labelledby="incomes-tab-actual"
+    ></div>
+    <div
+      class="incomes-panel"
+      id="incomes-panel-expected"
+      data-incomes-panel="expected"
+      role="tabpanel"
+      aria-labelledby="incomes-tab-expected"
+      hidden
+    ></div>
+  `;
+
+  shell.querySelector('[data-incomes-panel="actual"]').append(createIncomesLayout());
+
+  return shell;
 }
 
 /**
@@ -222,7 +291,7 @@ function createIncomeForm() {
   `;
 
   const dateInput = form.querySelector('[name="date"]');
-  dateInput.value = formatInputDate(new Date());
+  dateInput.value = formatIsoDate(new Date());
 
   form.addEventListener('submit', (event) => {
     event.preventDefault();
@@ -248,25 +317,14 @@ function handleIncomeFormSubmit(form) {
     comment: String(formData.get('comment') ?? '').trim(),
   };
 
-  const errors = validateIncomeForm(payload);
+  const errors = validateIncomePayload(payload);
 
   if (Object.keys(errors).length > 0) {
     showFormErrors(form, errors);
     return;
   }
 
-  const now = new Date().toISOString();
-  const income = {
-    ...createIncomeShape(),
-    id: generateId('income'),
-    incomeType: payload.category,
-    name: payload.source,
-    date: payload.date,
-    amount: Number(payload.amount),
-    comment: payload.comment,
-    createdAt: now,
-    updatedAt: now,
-  };
+  const income = buildIncomeFromPayload(payload);
 
   updateAppState((state) => {
     state.currentBudget.incomes.push(income);
@@ -279,47 +337,6 @@ function handleIncomeFormSubmit(form) {
     type: 'info',
     message: 'Доход сохранён.',
   });
-}
-
-function validateIncomeForm({ date, amount, category }) {
-  const errors = {};
-
-  if (!date) {
-    errors.date = 'Укажите дату.';
-  } else if (!isDateWithinAllowedRange(date)) {
-    errors.date = 'Дата должна быть не ранее 30 дней назад и не позднее 60 дней вперёд.';
-  }
-
-  const parsedAmount = Number(amount);
-
-  if (!amount) {
-    errors.amount = 'Укажите сумму.';
-  } else if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-    errors.amount = 'Сумма должна быть больше нуля.';
-  }
-
-  if (!category) {
-    errors.category = 'Выберите категорию.';
-  } else if (!INCOME_TYPE_LABELS[category]) {
-    errors.category = 'Выберите категорию из списка.';
-  }
-
-  return errors;
-}
-
-function isDateWithinAllowedRange(dateString) {
-  const date = parseInputDate(dateString);
-
-  if (!date) {
-    return false;
-  }
-
-  const today = startOfDay(new Date());
-  const minDate = addDays(today, -30);
-  const maxDate = addDays(today, 60);
-  const target = startOfDay(date);
-
-  return target >= minDate && target <= maxDate;
 }
 
 function clearFormErrors(form) {
@@ -375,11 +392,7 @@ function formatDisplayDate(dateString) {
 }
 
 function formatInputDate(date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-
-  return `${year}-${month}-${day}`;
+  return formatIsoDate(date);
 }
 
 function formatAmount(amount) {
@@ -403,16 +416,6 @@ function parseInputDate(dateString) {
   }
 
   return new Date(year, month - 1, day);
-}
-
-function startOfDay(date) {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
-}
-
-function addDays(date, days) {
-  const result = new Date(date);
-  result.setDate(result.getDate() + days);
-  return result;
 }
 
 function escapeHtml(value) {

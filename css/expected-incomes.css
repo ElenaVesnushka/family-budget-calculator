@@ -1,0 +1,318 @@
+/**
+ * Стили вкладки «Ожидаемые доходы» и переключателя вкладок в разделе «Доходы».
+ */
+
+.incomes-shell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.incomes-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: var(--space-2);
+}
+
+.incomes-tabs__button {
+  appearance: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-weight: var(--font-weight-medium);
+  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+  transition: color var(--transition-fast), background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.incomes-tabs__button:hover {
+  color: var(--color-text);
+  background-color: var(--color-bg-subtle);
+}
+
+.incomes-tabs__button--active {
+  color: var(--color-text);
+  background-color: var(--color-bg-elevated);
+  border-color: var(--color-border);
+  border-bottom-color: var(--color-bg-elevated);
+  margin-bottom: -1px;
+}
+
+.incomes-panel {
+  min-height: 8rem;
+}
+
+.expected-incomes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.expected-incomes__reminders {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.expected-incomes__reminder {
+  margin: 0;
+  padding: var(--space-4);
+  color: var(--color-text);
+  background-color: var(--color-info-subtle);
+  border: 1px solid var(--color-border);
+  border-left: 4px solid var(--color-info);
+  border-radius: var(--radius-md);
+}
+
+.expected-incomes__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.expected-incomes__view-toggle {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-1);
+  background-color: var(--color-bg-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.expected-incomes__view-button {
+  appearance: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-weight: var(--font-weight-medium);
+  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+  transition: color var(--transition-fast), background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.expected-incomes__view-button:hover {
+  color: var(--color-text);
+}
+
+.expected-incomes__view-button--active {
+  color: var(--color-text);
+  background-color: var(--color-bg-elevated);
+  border-color: var(--color-border);
+  box-shadow: var(--shadow-sm);
+}
+
+.expected-incomes__list {
+  min-height: 8rem;
+}
+
+.expected-incomes__calendar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-height: 8rem;
+}
+
+.expected-incomes-calendar__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.expected-incomes-calendar__title {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  text-transform: capitalize;
+}
+
+.expected-incomes-calendar__nav {
+  min-width: 2.5rem;
+}
+
+.expected-incomes-calendar__weekdays,
+.expected-incomes-calendar__grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.expected-incomes-calendar__weekday {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.expected-incomes-calendar__day {
+  min-height: 6.5rem;
+  padding: var(--space-2);
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.expected-incomes-calendar__day--outside {
+  opacity: 0.45;
+}
+
+.expected-incomes-calendar__day--today {
+  border-color: var(--color-info);
+  box-shadow: inset 0 0 0 1px var(--color-info);
+}
+
+.expected-incomes-calendar__day-number {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: var(--space-2);
+}
+
+.expected-incomes-calendar__events {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.expected-incomes-calendar__event {
+  margin: 0;
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-snug);
+  color: var(--color-text);
+  background-color: var(--color-income-subtle, var(--color-bg-subtle));
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.expected-incomes-calendar__event--due {
+  background-color: var(--color-warning-subtle);
+}
+
+.expected-incomes-calendar__empty {
+  margin-top: var(--space-2);
+}
+
+.expected-incomes__empty {
+  margin: 0;
+  padding: var(--space-6);
+  text-align: center;
+  color: var(--color-text-secondary);
+  background-color: var(--color-bg-subtle);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.expected-incomes-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.expected-incomes-table thead {
+  background-color: var(--color-bg-subtle);
+}
+
+.expected-incomes-table th,
+.expected-incomes-table td {
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.expected-incomes-table th {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.expected-incomes-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.expected-incomes-table__row--due {
+  background-color: var(--color-warning-subtle);
+}
+
+.expected-incomes-table__row--disabled {
+  opacity: 0.72;
+}
+
+.expected-incomes-table__name {
+  font-weight: var(--font-weight-semibold);
+}
+
+.expected-incomes-table__amount {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-income);
+  white-space: nowrap;
+}
+
+.expected-incomes-table__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  min-width: 12rem;
+}
+
+.expected-incomes-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.expected-incomes-form__hint {
+  margin: 0;
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-relaxed);
+}
+
+@media (max-width: 768px) {
+  .expected-incomes-table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 640px) {
+  .expected-incomes__toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .expected-incomes__toolbar .btn,
+  .expected-incomes__view-toggle,
+  .incomes-tabs__button {
+    width: 100%;
+  }
+
+  .expected-incomes__view-button {
+    flex: 1 1 0;
+  }
+
+  .expected-incomes-calendar__day {
+    min-height: 4.5rem;
+  }
+}

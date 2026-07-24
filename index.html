@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="css/components.css">
   <link rel="stylesheet" href="css/dashboard.css">
   <link rel="stylesheet" href="css/incomes.css">
+  <link rel="stylesheet" href="css/expected-incomes.css">
   <link rel="stylesheet" href="css/expenses.css">
   <link rel="stylesheet" href="css/limits.css">
   <link rel="stylesheet" href="css/planned-expenses.css">
@@ -173,13 +174,55 @@
               data-region="incomes"
               data-workspace="incomes"
             >
-              <div class="incomes">
-                <div class="incomes__toolbar">
-                  <button type="button" class="btn btn--primary" data-action="add-income">
-                    Добавить доход
+              <div class="incomes-shell">
+                <div class="incomes-tabs" role="tablist" aria-label="Виды доходов">
+                  <button
+                    type="button"
+                    class="incomes-tabs__button incomes-tabs__button--active"
+                    role="tab"
+                    id="incomes-tab-actual"
+                    aria-selected="true"
+                    aria-controls="incomes-panel-actual"
+                    data-incomes-tab="actual"
+                  >
+                    Фактические
+                  </button>
+                  <button
+                    type="button"
+                    class="incomes-tabs__button"
+                    role="tab"
+                    id="incomes-tab-expected"
+                    aria-selected="false"
+                    aria-controls="incomes-panel-expected"
+                    data-incomes-tab="expected"
+                  >
+                    Ожидаемые
                   </button>
                 </div>
-                <div class="incomes__list" data-incomes-list role="region" aria-label="Список доходов"></div>
+                <div
+                  class="incomes-panel"
+                  id="incomes-panel-actual"
+                  data-incomes-panel="actual"
+                  role="tabpanel"
+                  aria-labelledby="incomes-tab-actual"
+                >
+                  <div class="incomes">
+                    <div class="incomes__toolbar">
+                      <button type="button" class="btn btn--primary" data-action="add-income">
+                        Добавить доход
+                      </button>
+                    </div>
+                    <div class="incomes__list" data-incomes-list role="region" aria-label="Список доходов"></div>
+                  </div>
+                </div>
+                <div
+                  class="incomes-panel"
+                  id="incomes-panel-expected"
+                  data-incomes-panel="expected"
+                  role="tabpanel"
+                  aria-labelledby="incomes-tab-expected"
+                  hidden
+                ></div>
               </div>
             </div>
           </div>
@@ -387,7 +430,7 @@
 
   </div>
 
-  <script type="module" src="js/app.js?v=20260724-7"></script>
+  <script type="module" src="js/app.js?v=20260724-9"></script>
   <script type="module" src="js/incomes.js"></script>
 </body>
 </html>

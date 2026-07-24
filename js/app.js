@@ -23,6 +23,7 @@ import { initNotifications, showNotification, hideNotification } from './notific
 import { initModals, openModal, closeModal, isModalOpen } from './modals.js';
 import { initDashboard } from './dashboard.js';
 import { initIncomes } from './incomes.js';
+import { initExpectedIncomes } from './expected-incomes.js';
 import { initExpenses } from './expenses.js';
 import { initLimits } from './limits.js';
 import { initPlannedExpenses } from './planned-expenses.js';
@@ -49,6 +50,7 @@ function bootstrap() {
 
       if (sectionId === 'incomes') {
         initIncomes();
+        initExpectedIncomes();
       }
 
       if (sectionId === 'expenses') {
@@ -66,6 +68,7 @@ function bootstrap() {
   initModals(getModalRoot());
   initDashboard();
   initIncomes();
+  initExpectedIncomes();
   initExpenses();
   initPlannedExpenses();
   initLimits();

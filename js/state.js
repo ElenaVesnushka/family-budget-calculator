@@ -61,7 +61,14 @@ export const RECURRENCE_FREQUENCIES = {
   WEEKLY: 'weekly',
   MONTHLY: 'monthly',
   INTERVAL: 'interval',
+  INTERVAL_MONTHS: 'interval-months',
+  YEARLY: 'yearly',
+  CUSTOM: 'custom',
+  UNLIMITED: 'unlimited',
 };
+
+/** Горизонт прогноза будущих поступлений (месяцы) для списка и календаря. */
+export const DEFAULT_OCCURRENCE_HORIZON_MONTHS = 12;
 
 export const REPORT_PERIODS = {
   WEEK: 'week',
@@ -317,6 +324,14 @@ function addDays(date, days) {
   return result;
 }
 
+function addMonthsPreserveDay(date, months) {
+  const year = date.getFullYear();
+  const month = date.getMonth() + months;
+  const day = date.getDate();
+
+  return new Date(year, month, clampDay(year, month, day));
+}
+
 function daysInMonth(year, month) {
   return new Date(year, month + 1, 0).getDate();
 }
@@ -521,6 +536,10 @@ const RECURRENCE_FREQUENCY_LABELS = {
   [RECURRENCE_FREQUENCIES.WEEKLY]: 'Еженедельно',
   [RECURRENCE_FREQUENCIES.MONTHLY]: 'Ежемесячно',
   [RECURRENCE_FREQUENCIES.INTERVAL]: 'Каждые N дней',
+  [RECURRENCE_FREQUENCIES.INTERVAL_MONTHS]: 'Каждые N месяцев',
+  [RECURRENCE_FREQUENCIES.YEARLY]: 'Ежегодно',
+  [RECURRENCE_FREQUENCIES.CUSTOM]: 'Произвольный период',
+  [RECURRENCE_FREQUENCIES.UNLIMITED]: 'Без ограничения',
 };
 
 /**
@@ -623,6 +642,10 @@ export function getRecurrenceLabel(recurrence) {
     return '—';
   }
 
+  if (recurrence.frequency === EXPECTED_INCOME_RECURRENCE_ONCE) {
+    return 'Разово';
+  }
+
   if (recurrence.frequency === RECURRENCE_FREQUENCIES.INTERVAL) {
     const days = Number(recurrence.intervalDays);
 
@@ -631,6 +654,36 @@ export function getRecurrenceLabel(recurrence) {
     }
 
     return RECURRENCE_FREQUENCY_LABELS[RECURRENCE_FREQUENCIES.INTERVAL];
+  }
+
+  if (recurrence.frequency === RECURRENCE_FREQUENCIES.INTERVAL_MONTHS) {
+    const months = Number(recurrence.intervalMonths);
+
+    if (Number.isFinite(months) && months > 0) {
+      return `Каждые ${months} мес.`;
+    }
+
+    return RECURRENCE_FREQUENCY_LABELS[RECURRENCE_FREQUENCIES.INTERVAL_MONTHS];
+  }
+
+  if (recurrence.frequency === RECURRENCE_FREQUENCIES.CUSTOM) {
+    const days = Number(recurrence.intervalDays);
+    const months = Number(recurrence.intervalMonths);
+    const parts = [];
+
+    if (Number.isFinite(months) && months > 0) {
+      parts.push(`${months} мес.`);
+    }
+
+    if (Number.isFinite(days) && days > 0) {
+      parts.push(`${days} дн.`);
+    }
+
+    if (parts.length > 0) {
+      return `Каждые ${parts.join(' и ')}`;
+    }
+
+    return RECURRENCE_FREQUENCY_LABELS[RECURRENCE_FREQUENCIES.CUSTOM];
   }
 
   return RECURRENCE_FREQUENCY_LABELS[recurrence.frequency] ?? '—';
@@ -665,6 +718,39 @@ export function calculateNextOccurrenceDate(fromDateString, recurrence) {
 
       return formatIsoDate(addDays(date, intervalDays));
     }
+    case RECURRENCE_FREQUENCIES.INTERVAL_MONTHS: {
+      const intervalMonths = Number(recurrence.intervalMonths);
+
+      if (!Number.isFinite(intervalMonths) || intervalMonths <= 0) {
+        return fromDateString;
+      }
+
+      return formatIsoDate(addMonthsPreserveDay(date, intervalMonths));
+    }
+    case RECURRENCE_FREQUENCIES.YEARLY:
+      return formatIsoDate(addMonthsPreserveDay(date, 12));
+    case RECURRENCE_FREQUENCIES.CUSTOM: {
+      let next = date;
+      const intervalMonths = Number(recurrence.intervalMonths);
+      const intervalDays = Number(recurrence.intervalDays);
+
+      if (Number.isFinite(intervalMonths) && intervalMonths > 0) {
+        next = addMonthsPreserveDay(next, intervalMonths);
+      }
+
+      if (Number.isFinite(intervalDays) && intervalDays > 0) {
+        next = addDays(next, intervalDays);
+      }
+
+      if (next.getTime() === date.getTime()) {
+        return fromDateString;
+      }
+
+      return formatIsoDate(next);
+    }
+    case RECURRENCE_FREQUENCIES.UNLIMITED:
+    case EXPECTED_INCOME_RECURRENCE_ONCE:
+      return fromDateString;
     default:
       return fromDateString;
   }
@@ -782,6 +868,339 @@ export function buildPlannedExpenseFromPayload(payload, now = new Date().toISOSt
   };
 }
 
+/** Периодичность «разово» для ожидаемых доходов (раздел 11 ТЗ). */
+export const EXPECTED_INCOME_RECURRENCE_ONCE = 'once';
+
+const INCOME_TYPE_VALUES = new Set(Object.values(INCOME_TYPES));
+
+/**
+ * Проверяет допустимый диапазон даты доходной операции (раздел 7, 16 ТЗ).
+ */
+export function isIncomeDateWithinAllowedRange(dateString, referenceDate = new Date()) {
+  return isExpenseDateWithinAllowedRange(dateString, referenceDate);
+}
+
+/**
+ * Валидация данных доходной операции.
+ */
+export function validateIncomePayload(payload) {
+  const errors = {};
+  const incomeType = String(payload.category ?? payload.incomeType ?? '').trim();
+  const date = String(payload.date ?? '').trim();
+  const amount = String(payload.amount ?? '').trim();
+
+  if (!date) {
+    errors.date = 'Укажите дату.';
+  } else if (!isIncomeDateWithinAllowedRange(date, new Date())) {
+    errors.date = 'Дата должна быть не ранее 30 дней назад и не позднее 60 дней вперёд.';
+  }
+
+  const parsedAmount = Number(amount);
+
+  if (!amount) {
+    errors.amount = 'Укажите сумму.';
+  } else if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+    errors.amount = 'Сумма должна быть больше нуля.';
+  }
+
+  if (!incomeType) {
+    errors.category = 'Выберите категорию.';
+  } else if (!INCOME_TYPE_VALUES.has(incomeType)) {
+    errors.category = 'Выберите категорию из списка.';
+  }
+
+  return errors;
+}
+
+/**
+ * Создаёт объект доходной операции из проверенных данных.
+ */
+export function buildIncomeFromPayload(payload, now = new Date().toISOString()) {
+  return {
+    ...createIncomeShape(),
+    id: generateId('income'),
+    incomeType: String(payload.category ?? payload.incomeType).trim(),
+    name: String(payload.source ?? payload.name ?? '').trim(),
+    date: String(payload.date).trim(),
+    amount: Number(payload.amount),
+    comment: String(payload.comment ?? '').trim(),
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+/**
+ * Ожидаемый доход является повторяющимся.
+ */
+export function isExpectedIncomeRecurring(recurrence) {
+  if (!recurrence?.frequency) {
+    return false;
+  }
+
+  const nonRecurring = new Set([
+    EXPECTED_INCOME_RECURRENCE_ONCE,
+    RECURRENCE_FREQUENCIES.UNLIMITED,
+  ]);
+
+  return !nonRecurring.has(recurrence.frequency);
+}
+
+/**
+ * Конец горизонта прогноза будущих поступлений.
+ */
+export function getOccurrenceRangeEnd(
+  referenceDate = new Date(),
+  horizonMonths = DEFAULT_OCCURRENCE_HORIZON_MONTHS,
+) {
+  const end = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate());
+  end.setMonth(end.getMonth() + horizonMonths);
+  return formatIsoDate(end);
+}
+
+/**
+ * Статус конкретного наступления ожидаемого дохода.
+ */
+export function getExpectedIncomeOccurrenceStatus(expectedIncome, occurrenceDate, referenceDate = new Date()) {
+  if (!expectedIncome?.isEnabled) {
+    return isExpectedIncomeRecurring(expectedIncome?.recurrence) ? 'Отключён' : 'Завершён';
+  }
+
+  if (
+    occurrenceDate === expectedIncome.nextOccurrenceDate
+    && isExpectedIncomeDue(expectedIncome, referenceDate)
+  ) {
+    return 'Ожидает подтверждения';
+  }
+
+  return 'Запланирован';
+}
+
+/**
+ * Генерирует наступления ожидаемого дохода в заданном горизонте.
+ */
+export function generateExpectedIncomeOccurrences(expectedIncome, options = {}) {
+  if (!expectedIncome?.isEnabled || !expectedIncome.nextOccurrenceDate) {
+    return [];
+  }
+
+  const {
+    referenceDate = new Date(),
+    rangeEnd = getOccurrenceRangeEnd(referenceDate),
+    maxOccurrences = 200,
+  } = options;
+  const isRecurring = isExpectedIncomeRecurring(expectedIncome.recurrence);
+  const today = startOfDay(referenceDate);
+  const endDate = parseIsoDate(rangeEnd);
+
+  if (!endDate) {
+    return [];
+  }
+
+  const occurrences = [];
+  let currentDate = expectedIncome.nextOccurrenceDate;
+  let guard = 0;
+
+  while (guard < maxOccurrences) {
+    const parsedDate = parseIsoDate(currentDate);
+
+    if (!parsedDate || startOfDay(parsedDate) > endDate) {
+      break;
+    }
+
+    const isCurrent = currentDate === expectedIncome.nextOccurrenceDate;
+    const includeOccurrence = isCurrent || startOfDay(parsedDate) >= today;
+
+    if (includeOccurrence) {
+      occurrences.push({
+        id: `${expectedIncome.id}:${currentDate}`,
+        expectedIncomeId: expectedIncome.id,
+        occurrenceDate: currentDate,
+        expectedIncome,
+        isCurrent,
+        status: getExpectedIncomeOccurrenceStatus(expectedIncome, currentDate, referenceDate),
+      });
+    }
+
+    if (!isRecurring) {
+      break;
+    }
+
+    const nextDate = calculateNextOccurrenceDate(currentDate, expectedIncome.recurrence);
+
+    if (nextDate === currentDate) {
+      break;
+    }
+
+    currentDate = nextDate;
+    guard += 1;
+  }
+
+  return occurrences;
+}
+
+/**
+ * Собирает наступления всех активных ожидаемых доходов.
+ */
+export function collectExpectedIncomeOccurrences(expectedIncomes, options = {}) {
+  return (expectedIncomes ?? [])
+    .filter((item) => item.isEnabled)
+    .flatMap((item) => generateExpectedIncomeOccurrences(item, options))
+    .sort((first, second) => first.occurrenceDate.localeCompare(second.occurrenceDate));
+}
+
+/**
+ * Создаёт объект периодичности из данных формы.
+ */
+export function buildRecurrenceFromPayload(payload) {
+  const frequency = payload.frequency;
+
+  return {
+    frequency,
+    intervalDays: (
+      frequency === RECURRENCE_FREQUENCIES.INTERVAL
+      || frequency === RECURRENCE_FREQUENCIES.CUSTOM
+    ) && String(payload.intervalDays ?? '').trim()
+      ? Number(payload.intervalDays)
+      : null,
+    intervalMonths: (
+      frequency === RECURRENCE_FREQUENCIES.INTERVAL_MONTHS
+      || frequency === RECURRENCE_FREQUENCIES.CUSTOM
+    ) && String(payload.intervalMonths ?? '').trim()
+      ? Number(payload.intervalMonths)
+      : null,
+  };
+}
+
+/**
+ * Ожидаемый доход ожидает подтверждения (дата наступила или прошла).
+ */
+export function isExpectedIncomeDue(expectedIncome, referenceDate = new Date()) {
+  if (!expectedIncome?.isEnabled) {
+    return false;
+  }
+
+  const nextDate = parseIsoDate(expectedIncome.nextOccurrenceDate);
+
+  if (!nextDate) {
+    return false;
+  }
+
+  return startOfDay(nextDate) <= startOfDay(referenceDate);
+}
+
+/**
+ * Валидация данных ожидаемого дохода.
+ */
+export function validateExpectedIncomePayload(payload) {
+  const errors = {};
+  const {
+    incomeType = '',
+    name = '',
+    amount = '',
+    nextOccurrenceDate = '',
+    frequency = '',
+    intervalDays = '',
+    intervalMonths = '',
+  } = payload;
+
+  if (!String(incomeType).trim()) {
+    errors.incomeType = 'Выберите вид дохода.';
+  } else if (!INCOME_TYPE_VALUES.has(incomeType)) {
+    errors.incomeType = 'Выберите вид дохода из списка.';
+  }
+
+  if (!String(name).trim()) {
+    errors.name = 'Укажите название.';
+  }
+
+  const parsedAmount = Number(amount);
+
+  if (!String(amount).trim()) {
+    errors.amount = 'Укажите сумму.';
+  } else if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+    errors.amount = 'Сумма должна быть больше нуля.';
+  }
+
+  if (!String(nextOccurrenceDate).trim()) {
+    errors.nextOccurrenceDate = 'Укажите дату поступления.';
+  } else if (!parseIsoDate(nextOccurrenceDate)) {
+    errors.nextOccurrenceDate = 'Укажите корректную дату.';
+  }
+
+  const allowedFrequencies = [
+    ...Object.values(RECURRENCE_FREQUENCIES),
+    EXPECTED_INCOME_RECURRENCE_ONCE,
+  ];
+
+  if (!frequency || !allowedFrequencies.includes(frequency)) {
+    errors.frequency = 'Выберите периодичность.';
+  }
+
+  if (frequency === RECURRENCE_FREQUENCIES.INTERVAL) {
+    const parsedInterval = Number(intervalDays);
+
+    if (!String(intervalDays).trim()) {
+      errors.intervalDays = 'Укажите количество дней.';
+    } else if (!Number.isInteger(parsedInterval) || parsedInterval <= 0) {
+      errors.intervalDays = 'Количество дней должно быть целым числом больше нуля.';
+    }
+  }
+
+  if (frequency === RECURRENCE_FREQUENCIES.INTERVAL_MONTHS) {
+    const parsedInterval = Number(intervalMonths);
+
+    if (!String(intervalMonths).trim()) {
+      errors.intervalMonths = 'Укажите количество месяцев.';
+    } else if (!Number.isInteger(parsedInterval) || parsedInterval <= 0) {
+      errors.intervalMonths = 'Количество месяцев должно быть целым числом больше нуля.';
+    }
+  }
+
+  if (frequency === RECURRENCE_FREQUENCIES.CUSTOM) {
+    const parsedDays = Number(intervalDays);
+    const parsedMonths = Number(intervalMonths);
+    const hasDays = String(intervalDays).trim() && Number.isInteger(parsedDays) && parsedDays > 0;
+    const hasMonths = String(intervalMonths).trim() && Number.isInteger(parsedMonths) && parsedMonths > 0;
+
+    if (!hasDays && !hasMonths) {
+      errors.intervalDays = 'Укажите количество дней и/или месяцев.';
+      errors.intervalMonths = 'Укажите количество дней и/или месяцев.';
+    } else {
+      if (String(intervalDays).trim() && !hasDays) {
+        errors.intervalDays = 'Количество дней должно быть целым числом больше нуля.';
+      }
+
+      if (String(intervalMonths).trim() && !hasMonths) {
+        errors.intervalMonths = 'Количество месяцев должно быть целым числом больше нуля.';
+      }
+    }
+  }
+
+  return errors;
+}
+
+/**
+ * Создаёт объект ожидаемого дохода из проверенных данных.
+ */
+export function buildExpectedIncomeFromPayload(payload, now = new Date().toISOString()) {
+  const recurrence = buildRecurrenceFromPayload(payload);
+  const nextOccurrenceDate = String(payload.nextOccurrenceDate).trim();
+
+  return {
+    ...createExpectedIncomeShape(),
+    id: generateId('expected-income'),
+    incomeType: String(payload.incomeType).trim(),
+    name: String(payload.name).trim(),
+    amount: Number(payload.amount),
+    nextOccurrenceDate,
+    comment: String(payload.comment ?? '').trim(),
+    recurrence,
+    isEnabled: true,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
 /**
  * Шаблон ожидаемого дохода (раздел 11 ТЗ).
  */
@@ -807,6 +1226,7 @@ export function createRecurrenceShape() {
   return {
     frequency: null,
     intervalDays: null,
+    intervalMonths: null,
   };
 }
 
