@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/layout.css">
   <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/dashboard.css">
 </head>
 <body>
   <div id="app" class="app">
@@ -86,7 +87,65 @@
             </p>
           </header>
           <div class="app-section__content">
-            <div class="app-section__workspace" data-region="dashboard" data-workspace="dashboard"></div>
+            <div
+              id="dashboard-workspace"
+              class="app-section__workspace app-section__workspace--active"
+              data-region="dashboard"
+              data-workspace="dashboard"
+            >
+              <div class="dashboard">
+                <div class="dashboard__grid">
+                  <article class="dashboard-card" data-card="balance">
+                    <header class="dashboard-card__header">
+                      <h3 class="dashboard-card__title" id="dashboard-card-title-balance">Баланс</h3>
+                    </header>
+                    <div class="dashboard-card__body" data-card-content="balance" aria-labelledby="dashboard-card-title-balance">
+                      <div class="dashboard-card__placeholder"></div>
+                    </div>
+                  </article>
+                  <article class="dashboard-card dashboard-card--income" data-card="incomes">
+                    <header class="dashboard-card__header">
+                      <h3 class="dashboard-card__title" id="dashboard-card-title-incomes">Доходы месяца</h3>
+                    </header>
+                    <div class="dashboard-card__body" data-card-content="incomes" aria-labelledby="dashboard-card-title-incomes">
+                      <div class="dashboard-card__placeholder"></div>
+                    </div>
+                  </article>
+                  <article class="dashboard-card dashboard-card--expense" data-card="expenses">
+                    <header class="dashboard-card__header">
+                      <h3 class="dashboard-card__title" id="dashboard-card-title-expenses">Расходы месяца</h3>
+                    </header>
+                    <div class="dashboard-card__body" data-card-content="expenses" aria-labelledby="dashboard-card-title-expenses">
+                      <div class="dashboard-card__placeholder"></div>
+                    </div>
+                  </article>
+                  <article class="dashboard-card" data-card="plan-fact">
+                    <header class="dashboard-card__header">
+                      <h3 class="dashboard-card__title" id="dashboard-card-title-plan-fact">План / Факт</h3>
+                    </header>
+                    <div class="dashboard-card__body" data-card-content="plan-fact" aria-labelledby="dashboard-card-title-plan-fact">
+                      <div class="dashboard-card__placeholder"></div>
+                    </div>
+                  </article>
+                  <article class="dashboard-card" data-card="cushion">
+                    <header class="dashboard-card__header">
+                      <h3 class="dashboard-card__title" id="dashboard-card-title-cushion">Финансовая подушка</h3>
+                    </header>
+                    <div class="dashboard-card__body" data-card-content="cushion" aria-labelledby="dashboard-card-title-cushion">
+                      <div class="dashboard-card__placeholder"></div>
+                    </div>
+                  </article>
+                  <article class="dashboard-card dashboard-card--wide" data-card="recent">
+                    <header class="dashboard-card__header">
+                      <h3 class="dashboard-card__title" id="dashboard-card-title-recent">Последние операции</h3>
+                    </header>
+                    <div class="dashboard-card__body" data-card-content="recent" aria-labelledby="dashboard-card-title-recent">
+                      <div class="dashboard-card__placeholder"></div>
+                    </div>
+                  </article>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
 

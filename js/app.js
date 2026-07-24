@@ -21,6 +21,7 @@ import {
 } from './ui.js';
 import { initNotifications, showNotification, hideNotification } from './notifications.js';
 import { initModals, openModal, closeModal, isModalOpen } from './modals.js';
+import { initDashboard } from './dashboard.js';
 
 export {
   getAppState,
@@ -46,6 +47,7 @@ function bootstrap() {
 
   initNotifications(getNotificationsContainer());
   initModals(getModalRoot());
+  initDashboard();
 
   applyTheme(appState.settings.theme);
   showSection(appState.ui.activeSection);
