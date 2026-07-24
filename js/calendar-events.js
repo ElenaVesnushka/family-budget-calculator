@@ -48,6 +48,21 @@ export function expectedIncomeOccurrenceToCalendarEvent(occurrence) {
   });
 }
 
+export function plannedExpenseOccurrenceToCalendarEvent(occurrence) {
+  return createCalendarEvent({
+    type: CALENDAR_EVENT_TYPES.PLANNED_EXPENSE,
+    sourceId: occurrence.plannedExpenseId,
+    date: occurrence.occurrenceDate,
+    title: occurrence.plannedExpense.name,
+    amount: occurrence.plannedExpense.amount,
+    payload: {
+      occurrence,
+      status: occurrence.status,
+      isCurrent: occurrence.isCurrent,
+    },
+  });
+}
+
 /**
  * Группирует события календаря по ISO-дате.
  */

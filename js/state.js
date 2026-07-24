@@ -774,6 +774,113 @@ export function isPlannedExpenseDue(plannedExpense, referenceDate = new Date()) 
 }
 
 /**
+ * Плановый расход является повторяющимся.
+ */
+export function isPlannedExpenseRecurring(recurrence) {
+  if (!recurrence?.frequency) {
+    return false;
+  }
+
+  const nonRecurring = new Set([
+    EXPECTED_INCOME_RECURRENCE_ONCE,
+    RECURRENCE_FREQUENCIES.UNLIMITED,
+  ]);
+
+  return !nonRecurring.has(recurrence.frequency);
+}
+
+/**
+ * Статус конкретного наступления планового расхода.
+ */
+export function getPlannedExpenseOccurrenceStatus(plannedExpense, occurrenceDate, referenceDate = new Date()) {
+  if (!plannedExpense?.isEnabled) {
+    return isPlannedExpenseRecurring(plannedExpense?.recurrence) ? 'Отключён' : 'Завершён';
+  }
+
+  if (
+    occurrenceDate === plannedExpense.nextOccurrenceDate
+    && isPlannedExpenseDue(plannedExpense, referenceDate)
+  ) {
+    return 'Ожидает подтверждения';
+  }
+
+  return 'Запланирован';
+}
+
+/**
+ * Генерирует наступления планового расхода в заданном горизонте.
+ */
+export function generatePlannedExpenseOccurrences(plannedExpense, options = {}) {
+  if (!plannedExpense?.isEnabled || !plannedExpense.nextOccurrenceDate) {
+    return [];
+  }
+
+  const {
+    referenceDate = new Date(),
+    rangeEnd = getOccurrenceRangeEnd(referenceDate),
+    maxOccurrences = 200,
+  } = options;
+  const isRecurring = isPlannedExpenseRecurring(plannedExpense.recurrence);
+  const today = startOfDay(referenceDate);
+  const endDate = parseIsoDate(rangeEnd);
+
+  if (!endDate) {
+    return [];
+  }
+
+  const occurrences = [];
+  let currentDate = plannedExpense.nextOccurrenceDate;
+  let guard = 0;
+
+  while (guard < maxOccurrences) {
+    const parsedDate = parseIsoDate(currentDate);
+
+    if (!parsedDate || startOfDay(parsedDate) > endDate) {
+      break;
+    }
+
+    const isCurrent = currentDate === plannedExpense.nextOccurrenceDate;
+    const includeOccurrence = isCurrent || startOfDay(parsedDate) >= today;
+
+    if (includeOccurrence) {
+      occurrences.push({
+        id: `${plannedExpense.id}:${currentDate}`,
+        plannedExpenseId: plannedExpense.id,
+        occurrenceDate: currentDate,
+        plannedExpense,
+        isCurrent,
+        status: getPlannedExpenseOccurrenceStatus(plannedExpense, currentDate, referenceDate),
+      });
+    }
+
+    if (!isRecurring) {
+      break;
+    }
+
+    const nextDate = calculateNextOccurrenceDate(currentDate, plannedExpense.recurrence);
+
+    if (nextDate === currentDate) {
+      break;
+    }
+
+    currentDate = nextDate;
+    guard += 1;
+  }
+
+  return occurrences;
+}
+
+/**
+ * Собирает наступления всех активных плановых расходов.
+ */
+export function collectPlannedExpenseOccurrences(plannedExpenses, options = {}) {
+  return (plannedExpenses ?? [])
+    .filter((item) => item.isEnabled)
+    .flatMap((item) => generatePlannedExpenseOccurrences(item, options))
+    .sort((first, second) => first.occurrenceDate.localeCompare(second.occurrenceDate));
+}
+
+/**
  * Валидация данных планового расхода.
  */
 export function validatePlannedExpensePayload(payload, state) {
@@ -790,6 +897,7 @@ export function validatePlannedExpensePayload(payload, state) {
     firstDate = '',
     frequency = '',
     intervalDays = '',
+    intervalMonths = '',
   } = payload;
 
   if (!String(name).trim()) {
@@ -822,7 +930,12 @@ export function validatePlannedExpensePayload(payload, state) {
     errors.firstDate = 'Укажите корректную дату.';
   }
 
-  if (!frequency || !Object.values(RECURRENCE_FREQUENCIES).includes(frequency)) {
+  const allowedFrequencies = [
+    ...Object.values(RECURRENCE_FREQUENCIES),
+    EXPECTED_INCOME_RECURRENCE_ONCE,
+  ];
+
+  if (!frequency || !allowedFrequencies.includes(frequency)) {
     errors.frequency = 'Выберите периодичность.';
   }
 
@@ -836,6 +949,36 @@ export function validatePlannedExpensePayload(payload, state) {
     }
   }
 
+  if (frequency === RECURRENCE_FREQUENCIES.INTERVAL_MONTHS) {
+    const parsedInterval = Number(intervalMonths);
+
+    if (!String(intervalMonths).trim()) {
+      errors.intervalMonths = 'Укажите количество месяцев.';
+    } else if (!Number.isInteger(parsedInterval) || parsedInterval <= 0) {
+      errors.intervalMonths = 'Количество месяцев должно быть целым числом больше нуля.';
+    }
+  }
+
+  if (frequency === RECURRENCE_FREQUENCIES.CUSTOM) {
+    const parsedDays = Number(intervalDays);
+    const parsedMonths = Number(intervalMonths);
+    const hasDays = String(intervalDays).trim() && Number.isInteger(parsedDays) && parsedDays > 0;
+    const hasMonths = String(intervalMonths).trim() && Number.isInteger(parsedMonths) && parsedMonths > 0;
+
+    if (!hasDays && !hasMonths) {
+      errors.intervalDays = 'Укажите количество дней и/или месяцев.';
+      errors.intervalMonths = 'Укажите количество дней и/или месяцев.';
+    } else {
+      if (String(intervalDays).trim() && !hasDays) {
+        errors.intervalDays = 'Количество дней должно быть целым числом больше нуля.';
+      }
+
+      if (String(intervalMonths).trim() && !hasMonths) {
+        errors.intervalMonths = 'Количество месяцев должно быть целым числом больше нуля.';
+      }
+    }
+  }
+
   return errors;
 }
 
@@ -843,12 +986,7 @@ export function validatePlannedExpensePayload(payload, state) {
  * Создаёт объект планового расхода из проверенных данных.
  */
 export function buildPlannedExpenseFromPayload(payload, now = new Date().toISOString()) {
-  const recurrence = {
-    frequency: payload.frequency,
-    intervalDays: payload.frequency === RECURRENCE_FREQUENCIES.INTERVAL
-      ? Number(payload.intervalDays)
-      : null,
-  };
+  const recurrence = buildRecurrenceFromPayload(payload);
   const firstDate = String(payload.firstDate).trim();
 
   return {

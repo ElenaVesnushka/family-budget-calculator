@@ -6,37 +6,57 @@
 import { getSectionRegion } from './ui.js';
 import { getAppState, updateAppState, isStateInitialized } from './state-service.js';
 import { openModal, closeModal } from './modals.js';
-import { showNotification, hideNotification } from './notifications.js';
+import { showNotification } from './notifications.js';
 import {
-  generateId,
   RECURRENCE_FREQUENCIES,
+  EXPECTED_INCOME_RECURRENCE_ONCE,
   getExpenseCategories,
   getAvailableExpenseArticles,
   getReferenceName,
   getRecurrenceLabel,
   validatePlannedExpensePayload,
   buildPlannedExpenseFromPayload,
+  buildRecurrenceFromPayload,
   validateExpensePayload,
   buildExpenseFromPayload,
   calculateNextOccurrenceDate,
   isPlannedExpenseDue,
+  isPlannedExpenseRecurring,
+  collectPlannedExpenseOccurrences,
   formatIsoDate,
 } from './state.js';
+import {
+  buildCalendarMonthGrid,
+  getCalendarMonthLabel,
+  getCalendarWeekdayLabels,
+  groupCalendarEventsByDate,
+  plannedExpenseOccurrenceToCalendarEvent,
+} from './calendar-events.js';
 
 const EXPENSES_WORKSPACE_ID = 'expenses-workspace';
-const REMINDER_ID_PREFIX = 'planned-expense-reminder-';
 
 const RECURRENCE_OPTIONS = [
   { value: RECURRENCE_FREQUENCIES.DAILY, label: 'Ежедневно' },
   { value: RECURRENCE_FREQUENCIES.WEEKLY, label: 'Еженедельно' },
   { value: RECURRENCE_FREQUENCIES.MONTHLY, label: 'Ежемесячно' },
   { value: RECURRENCE_FREQUENCIES.INTERVAL, label: 'Каждые N дней' },
+  { value: RECURRENCE_FREQUENCIES.INTERVAL_MONTHS, label: 'Каждые N месяцев' },
+  { value: RECURRENCE_FREQUENCIES.YEARLY, label: 'Ежегодно' },
+  { value: RECURRENCE_FREQUENCIES.CUSTOM, label: 'Произвольный период' },
+  { value: RECURRENCE_FREQUENCIES.UNLIMITED, label: 'Без ограничения' },
 ];
+
+const VIEW_MODES = {
+  LIST: 'list',
+  CALENDAR: 'calendar',
+};
 
 let workspace = null;
 let stateUpdateListenerAttached = false;
 let tabsListenerAttached = false;
-const shownReminderIds = new Set();
+let viewMode = VIEW_MODES.LIST;
+let calendarCursor = new Date();
+const confirmingIds = new Set();
 
 function getExpensesWorkspace() {
   return document.getElementById(EXPENSES_WORKSPACE_ID) ?? getSectionRegion('expenses');
@@ -61,8 +81,8 @@ export function initPlannedExpenses() {
   ensurePlannedLayout();
 
   if (isStateInitialized()) {
-    renderPlannedExpensesList();
-    showDueReminders();
+    renderPlannedExpenses();
+    renderLocalDueReminders();
   }
 }
 
@@ -99,8 +119,8 @@ function handleStateUpdated() {
     return;
   }
 
-  renderPlannedExpensesList();
-  showDueReminders();
+  renderPlannedExpenses();
+  renderLocalDueReminders();
 }
 
 function handleExpensesTabClick(event) {
@@ -163,11 +183,20 @@ function handlePlannedExpensesClick(event) {
     return;
   }
 
-  const copyButton = event.target.closest('[data-action="copy-planned-expense"]');
+  const viewButton = event.target.closest('[data-planned-view]');
 
-  if (copyButton?.dataset.plannedExpenseId) {
+  if (viewButton?.closest('.planned-expenses')) {
     initPlannedExpenses();
-    handleCopyPlannedExpense(copyButton.dataset.plannedExpenseId);
+    switchPlannedExpensesView(viewButton.dataset.plannedView);
+    event.preventDefault();
+    return;
+  }
+
+  const calendarNavButton = event.target.closest('[data-planned-calendar-nav]');
+
+  if (calendarNavButton?.closest('.planned-expenses__calendar')) {
+    initPlannedExpenses();
+    shiftCalendarMonth(Number(calendarNavButton.dataset.plannedCalendarNav));
     event.preventDefault();
     return;
   }
@@ -219,20 +248,97 @@ function handlePlannedExpensesClick(event) {
 
 document.addEventListener('click', handlePlannedExpensesClick);
 
+function switchPlannedExpensesView(nextView) {
+  if (!Object.values(VIEW_MODES).includes(nextView)) {
+    return;
+  }
+
+  viewMode = nextView;
+
+  const container = getPlannedPanel()?.querySelector('.planned-expenses');
+
+  if (!container) {
+    return;
+  }
+
+  container.querySelectorAll('[data-planned-view]').forEach((button) => {
+    const isActive = button.dataset.plannedView === viewMode;
+    button.classList.toggle('planned-expenses__view-button--active', isActive);
+    button.setAttribute('aria-selected', isActive ? 'true' : 'false');
+  });
+
+  container.querySelector('[data-planned-expenses-list]').hidden = viewMode !== VIEW_MODES.LIST;
+  container.querySelector('[data-planned-expenses-calendar]').hidden = viewMode !== VIEW_MODES.CALENDAR;
+
+  renderPlannedExpenses();
+}
+
+function shiftCalendarMonth(delta) {
+  calendarCursor = new Date(calendarCursor.getFullYear(), calendarCursor.getMonth() + delta, 1);
+  renderPlannedExpensesCalendar();
+}
+
+function renderPlannedExpenses() {
+  if (viewMode === VIEW_MODES.CALENDAR) {
+    renderPlannedExpensesCalendar();
+    return;
+  }
+
+  renderPlannedExpensesList();
+}
+
 function createPlannedExpensesLayout() {
   const container = document.createElement('div');
   container.className = 'planned-expenses';
 
   container.innerHTML = `
+    <div class="planned-expenses__reminders" data-planned-reminders hidden aria-live="polite"></div>
     <div class="planned-expenses__toolbar">
+      <div class="planned-expenses__view-toggle" role="tablist" aria-label="Режим просмотра плановых расходов">
+        <button type="button" class="planned-expenses__view-button planned-expenses__view-button--active" data-planned-view="list" role="tab" aria-selected="true">
+          Список
+        </button>
+        <button type="button" class="planned-expenses__view-button" data-planned-view="calendar" role="tab" aria-selected="false">
+          Календарь
+        </button>
+      </div>
       <button type="button" class="btn btn--primary" data-action="add-planned-expense">
         Добавить плановый расход
       </button>
     </div>
     <div class="planned-expenses__list" data-planned-expenses-list role="region" aria-label="Список плановых расходов"></div>
+    <div class="planned-expenses__calendar" data-planned-expenses-calendar role="region" aria-label="Календарь плановых расходов" hidden></div>
   `;
 
   return container;
+}
+
+function renderLocalDueReminders() {
+  const remindersRegion = getPlannedPanel()?.querySelector('[data-planned-reminders]');
+
+  if (!remindersRegion || !isStateInitialized()) {
+    return;
+  }
+
+  const dueItems = (getAppState().currentBudget.plannedExpenses ?? []).filter((item) => (
+    isPlannedExpenseDue(item)
+  ));
+
+  if (dueItems.length === 0) {
+    remindersRegion.hidden = true;
+    remindersRegion.replaceChildren();
+    return;
+  }
+
+  remindersRegion.hidden = false;
+  remindersRegion.replaceChildren();
+
+  dueItems.forEach((item) => {
+    const notice = document.createElement('p');
+    notice.className = 'planned-expenses__reminder';
+    notice.textContent = `Запланирован расход «${item.name}». Подтвердите выполнение операции.`;
+    remindersRegion.append(notice);
+  });
 }
 
 function renderPlannedExpensesList() {
@@ -246,17 +352,16 @@ function renderPlannedExpensesList() {
   }
 
   const state = getAppState();
-  const plannedExpenses = state.currentBudget.plannedExpenses ?? [];
-  const sorted = [...plannedExpenses].sort(comparePlannedExpensesByNextDate);
+  const occurrences = collectPlannedExpenseOccurrences(state.currentBudget.plannedExpenses ?? []);
   const categories = getExpenseCategories(state);
   const articles = getAvailableExpenseArticles(state);
 
   listRegion.replaceChildren();
 
-  if (sorted.length === 0) {
+  if (occurrences.length === 0) {
     const emptyState = document.createElement('p');
     emptyState.className = 'planned-expenses__empty';
-    emptyState.textContent = 'Плановые расходы пока не добавлены. Нажмите «Добавить плановый расход», чтобы запланировать регулярный платёж.';
+    emptyState.textContent = 'Будущие плановые расходы не запланированы. Нажмите «Добавить плановый расход», чтобы запланировать платёж.';
     listRegion.append(emptyState);
     return;
   }
@@ -266,8 +371,8 @@ function renderPlannedExpensesList() {
   table.innerHTML = `
     <thead>
       <tr>
+        <th scope="col">Дата</th>
         <th scope="col">Название</th>
-        <th scope="col">Следующая дата</th>
         <th scope="col">Сумма</th>
         <th scope="col">Категория</th>
         <th scope="col">Статья</th>
@@ -280,35 +385,130 @@ function renderPlannedExpensesList() {
 
   const tbody = document.createElement('tbody');
 
-  sorted.forEach((plannedExpense) => {
-    tbody.append(createPlannedExpenseRow(plannedExpense, categories, articles));
+  occurrences.forEach((occurrence) => {
+    tbody.append(createPlannedExpenseOccurrenceRow(occurrence, categories, articles));
   });
 
   table.append(tbody);
   listRegion.append(table);
 }
 
-function createPlannedExpenseRow(plannedExpense, categories, articles) {
+function renderPlannedExpensesCalendar() {
+  workspace = getExpensesWorkspace();
+  ensurePlannedLayout();
+
+  const calendarRegion = getPlannedPanel()?.querySelector('[data-planned-expenses-calendar]');
+
+  if (!calendarRegion || !isStateInitialized()) {
+    return;
+  }
+
+  const year = calendarCursor.getFullYear();
+  const month = calendarCursor.getMonth();
+  const occurrences = collectPlannedExpenseOccurrences(getAppState().currentBudget.plannedExpenses ?? []);
+  const events = occurrences.map(plannedExpenseOccurrenceToCalendarEvent);
+  const eventsByDate = groupCalendarEventsByDate(events);
+  const todayIso = formatIsoDate(new Date());
+
+  calendarRegion.replaceChildren();
+
+  const header = document.createElement('div');
+  header.className = 'planned-expenses-calendar__header';
+  header.innerHTML = `
+    <button type="button" class="btn btn--secondary planned-expenses-calendar__nav" data-planned-calendar-nav="-1" aria-label="Предыдущий месяц">←</button>
+    <h3 class="planned-expenses-calendar__title">${escapeHtml(getCalendarMonthLabel(year, month))}</h3>
+    <button type="button" class="btn btn--secondary planned-expenses-calendar__nav" data-planned-calendar-nav="1" aria-label="Следующий месяц">→</button>
+  `;
+  calendarRegion.append(header);
+
+  const weekdayRow = document.createElement('div');
+  weekdayRow.className = 'planned-expenses-calendar__weekdays';
+  getCalendarWeekdayLabels().forEach((label) => {
+    const cell = document.createElement('div');
+    cell.className = 'planned-expenses-calendar__weekday';
+    cell.textContent = label;
+    weekdayRow.append(cell);
+  });
+  calendarRegion.append(weekdayRow);
+
+  const grid = document.createElement('div');
+  grid.className = 'planned-expenses-calendar__grid';
+
+  buildCalendarMonthGrid(year, month).forEach((cell) => {
+    const dayCell = document.createElement('div');
+    dayCell.className = 'planned-expenses-calendar__day';
+
+    if (!cell.isCurrentMonth) {
+      dayCell.classList.add('planned-expenses-calendar__day--outside');
+    }
+
+    if (cell.date === todayIso) {
+      dayCell.classList.add('planned-expenses-calendar__day--today');
+    }
+
+    const dayLabel = document.createElement('div');
+    dayLabel.className = 'planned-expenses-calendar__day-number';
+    dayLabel.textContent = String(cell.dayNumber);
+    dayCell.append(dayLabel);
+
+    if (cell.date && eventsByDate.has(cell.date)) {
+      const eventsList = document.createElement('ul');
+      eventsList.className = 'planned-expenses-calendar__events';
+
+      eventsByDate.get(cell.date).forEach((event) => {
+        const item = document.createElement('li');
+        item.className = 'planned-expenses-calendar__event';
+
+        if (event.status === 'Ожидает подтверждения') {
+          item.classList.add('planned-expenses-calendar__event--due');
+        }
+
+        item.title = `${event.title} — ${formatAmount(event.amount)}`;
+        item.textContent = `${event.title} (${formatAmount(event.amount)})`;
+        eventsList.append(item);
+      });
+
+      dayCell.append(eventsList);
+    }
+
+    grid.append(dayCell);
+  });
+
+  calendarRegion.append(grid);
+
+  if (occurrences.length === 0) {
+    const emptyState = document.createElement('p');
+    emptyState.className = 'planned-expenses__empty planned-expenses-calendar__empty';
+    emptyState.textContent = 'В выбранном периоде нет запланированных расходов.';
+    calendarRegion.append(emptyState);
+  }
+}
+
+function createPlannedExpenseOccurrenceRow(occurrence, categories, articles) {
+  const { plannedExpense, occurrenceDate, status, isCurrent } = occurrence;
   const row = document.createElement('tr');
-  const isDue = isPlannedExpenseDue(plannedExpense);
-  const statusClass = !plannedExpense.isEnabled
-    ? 'planned-expenses-table__row--disabled'
-    : (isDue ? 'planned-expenses-table__row--due' : '');
+  let statusClass = '';
+
+  if (status === 'Ожидает подтверждения') {
+    statusClass = 'planned-expenses-table__row--due';
+  } else if (status === 'Отключён' || status === 'Завершён') {
+    statusClass = 'planned-expenses-table__row--disabled';
+  }
 
   row.className = `planned-expenses-table__row ${statusClass}`.trim();
   row.dataset.plannedExpenseId = plannedExpense.id;
+  row.dataset.occurrenceDate = occurrenceDate;
 
-  const statusText = !plannedExpense.isEnabled
-    ? 'Отключён'
-    : (isDue ? 'Ожидает подтверждения' : 'Запланирован');
+  const showActions = isCurrent;
+  const isDue = status === 'Ожидает подтверждения';
 
-  const dueActions = isDue && plannedExpense.isEnabled
+  const dueActions = showActions && isDue
     ? `
       <button type="button" class="btn btn--primary" data-action="confirm-planned-expense" data-planned-expense-id="${escapeHtml(plannedExpense.id)}">
-        Подтвердить
+        Подтвердить расход
       </button>
       <button type="button" class="btn btn--secondary" data-action="postpone-planned-expense" data-planned-expense-id="${escapeHtml(plannedExpense.id)}">
-        Перенести
+        Перенести дату
       </button>
       <button type="button" class="btn btn--secondary" data-action="skip-planned-expense" data-planned-expense-id="${escapeHtml(plannedExpense.id)}">
         Пропустить
@@ -316,21 +516,10 @@ function createPlannedExpenseRow(plannedExpense, categories, articles) {
     `
     : '';
 
-  row.innerHTML = `
-    <td class="planned-expenses-table__name">${escapeHtml(plannedExpense.name)}</td>
-    <td>${formatDisplayDate(plannedExpense.nextOccurrenceDate)}</td>
-    <td class="planned-expenses-table__amount">${formatAmount(plannedExpense.amount)}</td>
-    <td>${escapeHtml(getReferenceName(categories, plannedExpense.categoryId))}</td>
-    <td>${escapeHtml(getReferenceName(articles, plannedExpense.articleId))}</td>
-    <td>${escapeHtml(getRecurrenceLabel(plannedExpense.recurrence))}</td>
-    <td>${escapeHtml(statusText)}</td>
-    <td class="planned-expenses-table__actions">
-      ${dueActions}
+  const manageActions = showActions
+    ? `
       <button type="button" class="btn btn--secondary" data-action="edit-planned-expense" data-planned-expense-id="${escapeHtml(plannedExpense.id)}">
         Изменить
-      </button>
-      <button type="button" class="btn btn--secondary" data-action="copy-planned-expense" data-planned-expense-id="${escapeHtml(plannedExpense.id)}">
-        Копировать
       </button>
       <button type="button" class="btn btn--secondary" data-action="toggle-planned-expense" data-planned-expense-id="${escapeHtml(plannedExpense.id)}">
         ${plannedExpense.isEnabled ? 'Отключить' : 'Включить'}
@@ -338,6 +527,20 @@ function createPlannedExpenseRow(plannedExpense, categories, articles) {
       <button type="button" class="btn btn--secondary" data-action="delete-planned-expense" data-planned-expense-id="${escapeHtml(plannedExpense.id)}">
         Удалить
       </button>
+    `
+    : '';
+
+  row.innerHTML = `
+    <td>${formatDisplayDate(occurrenceDate)}</td>
+    <td class="planned-expenses-table__name">${escapeHtml(plannedExpense.name)}</td>
+    <td class="planned-expenses-table__amount">${formatAmount(plannedExpense.amount)}</td>
+    <td>${escapeHtml(getReferenceName(categories, plannedExpense.categoryId))}</td>
+    <td>${escapeHtml(getReferenceName(articles, plannedExpense.articleId))}</td>
+    <td>${escapeHtml(getRecurrenceLabel(plannedExpense.recurrence))}</td>
+    <td>${escapeHtml(status)}</td>
+    <td class="planned-expenses-table__actions">
+      ${dueActions}
+      ${manageActions}
     </td>
   `;
 
@@ -379,14 +582,14 @@ function createPlannedExpenseForm(plannedExpense = null) {
     <div class="form-field">
       <label class="form-field__label" for="planned-category">Категория</label>
       <select class="form-field__input" id="planned-category" name="categoryId" required>
-        ${renderSelectOptions(categories, 'Выберите категорию')}
+        ${renderSelectOptions(categories, 'Выберите категорию', plannedExpense?.categoryId)}
       </select>
       <p class="form-field__error" data-error-for="categoryId" hidden></p>
     </div>
     <div class="form-field">
       <label class="form-field__label" for="planned-article">Статья</label>
       <select class="form-field__input" id="planned-article" name="articleId" required>
-        ${renderSelectOptions(articles, 'Выберите статью')}
+        ${renderSelectOptions(articles, 'Выберите статью', plannedExpense?.articleId)}
       </select>
       <p class="form-field__error" data-error-for="articleId" hidden></p>
     </div>
@@ -396,7 +599,7 @@ function createPlannedExpenseForm(plannedExpense = null) {
       <p class="form-field__error" data-error-for="amount" hidden></p>
     </div>
     <div class="form-field">
-      <label class="form-field__label" for="planned-first-date">Дата первого выполнения</label>
+      <label class="form-field__label" for="planned-first-date">Дата планового расхода</label>
       <input class="form-field__input" type="date" id="planned-first-date" name="firstDate" required>
       <p class="form-field__error" data-error-for="firstDate" hidden></p>
     </div>
@@ -407,10 +610,15 @@ function createPlannedExpenseForm(plannedExpense = null) {
       </select>
       <p class="form-field__error" data-error-for="frequency" hidden></p>
     </div>
-    <div class="form-field" data-interval-field hidden>
+    <div class="form-field" data-interval-days-field hidden>
       <label class="form-field__label" for="planned-interval-days">Каждые N дней</label>
       <input class="form-field__input" type="number" id="planned-interval-days" name="intervalDays" min="1" step="1" inputmode="numeric">
       <p class="form-field__error" data-error-for="intervalDays" hidden></p>
+    </div>
+    <div class="form-field" data-interval-months-field hidden>
+      <label class="form-field__label" for="planned-interval-months">Каждые N месяцев</label>
+      <input class="form-field__input" type="number" id="planned-interval-months" name="intervalMonths" min="1" step="1" inputmode="numeric">
+      <p class="form-field__error" data-error-for="intervalMonths" hidden></p>
     </div>
     <div class="form-field">
       <label class="form-field__label" for="planned-comment">Комментарий</label>
@@ -426,22 +634,20 @@ function createPlannedExpenseForm(plannedExpense = null) {
   if (plannedExpense) {
     form.dataset.plannedExpenseId = plannedExpense.id;
     form.querySelector('#planned-name').value = plannedExpense.name;
-    form.querySelector('#planned-category').value = plannedExpense.categoryId;
-    form.querySelector('#planned-article').value = plannedExpense.articleId;
     form.querySelector('#planned-amount').value = String(plannedExpense.amount);
     form.querySelector('#planned-first-date').value = plannedExpense.firstDate;
-    form.querySelector('#planned-frequency').value = plannedExpense.recurrence?.frequency ?? '';
     form.querySelector('#planned-interval-days').value = plannedExpense.recurrence?.intervalDays ?? '';
+    form.querySelector('#planned-interval-months').value = plannedExpense.recurrence?.intervalMonths ?? '';
     form.querySelector('#planned-comment').value = plannedExpense.comment ?? '';
   } else {
     form.querySelector('#planned-first-date').value = formatIsoDate(new Date());
   }
 
   form.querySelector('#planned-frequency').addEventListener('change', () => {
-    updateIntervalFieldVisibility(form);
+    updateRecurrenceFieldsVisibility(form);
   });
 
-  updateIntervalFieldVisibility(form);
+  updateRecurrenceFieldsVisibility(form);
 
   form.addEventListener('submit', (event) => {
     event.preventDefault();
@@ -455,19 +661,37 @@ function createPlannedExpenseForm(plannedExpense = null) {
   return form;
 }
 
-function updateIntervalFieldVisibility(form) {
+function updateRecurrenceFieldsVisibility(form) {
   const frequency = form.querySelector('#planned-frequency').value;
-  const intervalField = form.querySelector('[data-interval-field]');
-  const intervalInput = form.querySelector('#planned-interval-days');
-  const isInterval = frequency === RECURRENCE_FREQUENCIES.INTERVAL;
+  const daysField = form.querySelector('[data-interval-days-field]');
+  const monthsField = form.querySelector('[data-interval-months-field]');
+  const daysInput = form.querySelector('#planned-interval-days');
+  const monthsInput = form.querySelector('#planned-interval-months');
+  const showDays = frequency === RECURRENCE_FREQUENCIES.INTERVAL
+    || frequency === RECURRENCE_FREQUENCIES.CUSTOM;
+  const showMonths = frequency === RECURRENCE_FREQUENCIES.INTERVAL_MONTHS
+    || frequency === RECURRENCE_FREQUENCIES.CUSTOM;
 
-  intervalField.hidden = !isInterval;
+  daysField.hidden = !showDays;
+  monthsField.hidden = !showMonths;
 
-  if (isInterval) {
-    intervalInput.setAttribute('required', 'required');
+  if (showDays) {
+    daysInput.setAttribute('required', 'required');
   } else {
-    intervalInput.removeAttribute('required');
-    intervalInput.value = '';
+    daysInput.removeAttribute('required');
+    daysInput.value = '';
+  }
+
+  if (showMonths) {
+    monthsInput.setAttribute('required', 'required');
+  } else {
+    monthsInput.removeAttribute('required');
+    monthsInput.value = '';
+  }
+
+  if (frequency === RECURRENCE_FREQUENCIES.CUSTOM) {
+    daysInput.removeAttribute('required');
+    monthsInput.removeAttribute('required');
   }
 }
 
@@ -483,6 +707,7 @@ function handlePlannedExpenseFormSubmit(form) {
     firstDate: String(formData.get('firstDate') ?? '').trim(),
     frequency: String(formData.get('frequency') ?? '').trim(),
     intervalDays: String(formData.get('intervalDays') ?? '').trim(),
+    intervalMonths: String(formData.get('intervalMonths') ?? '').trim(),
     comment: String(formData.get('comment') ?? '').trim(),
   };
 
@@ -506,12 +731,7 @@ function handlePlannedExpenseFormSubmit(form) {
       }
 
       const current = draft.currentBudget.plannedExpenses[index];
-      const recurrence = {
-        frequency: payload.frequency,
-        intervalDays: payload.frequency === RECURRENCE_FREQUENCIES.INTERVAL
-          ? Number(payload.intervalDays)
-          : null,
-      };
+      const recurrence = buildRecurrenceFromPayload(payload);
 
       draft.currentBudget.plannedExpenses[index] = {
         ...current,
@@ -573,7 +793,7 @@ function openConfirmPlannedExpenseModal(plannedExpenseId) {
     </div>
     <div class="form-actions">
       <button type="button" class="btn btn--secondary" data-action="cancel-planned-expense">Отмена</button>
-      <button type="submit" class="btn btn--primary">Подтвердить</button>
+      <button type="submit" class="btn btn--primary" data-action="submit-confirm-planned">Подтвердить расход</button>
     </div>
   `;
 
@@ -589,10 +809,14 @@ function openConfirmPlannedExpenseModal(plannedExpenseId) {
     closeModal();
   });
 
-  return openModal({ title: 'Подтвердить плановый расход', content: form });
+  return openModal({ title: 'Подтвердить расход', content: form });
 }
 
 function handleConfirmPlannedExpenseSubmit(form) {
+  if (confirmingIds.has(form.dataset.plannedExpenseId)) {
+    return;
+  }
+
   clearFormErrors(form);
 
   const plannedExpenseId = form.dataset.plannedExpenseId;
@@ -603,6 +827,10 @@ function handleConfirmPlannedExpenseSubmit(form) {
     closeModal();
     return;
   }
+
+  const submitButton = form.querySelector('[data-action="submit-confirm-planned"]');
+  submitButton.disabled = true;
+  confirmingIds.add(plannedExpenseId);
 
   const formData = new FormData(form);
   const payload = {
@@ -618,16 +846,15 @@ function handleConfirmPlannedExpenseSubmit(form) {
   const errors = validateExpensePayload(payload, state);
 
   if (Object.keys(errors).length > 0) {
+    submitButton.disabled = false;
+    confirmingIds.delete(plannedExpenseId);
     showFormErrors(form, errors);
     return;
   }
 
   const expense = buildExpenseFromPayload(payload);
   const now = new Date().toISOString();
-  const nextOccurrenceDate = calculateNextOccurrenceDate(
-    plannedExpense.nextOccurrenceDate,
-    plannedExpense.recurrence,
-  );
+  const isRecurring = isPlannedExpenseRecurring(plannedExpense.recurrence);
 
   updateAppState((draft) => {
     draft.currentBudget.expenses.push(expense);
@@ -637,7 +864,10 @@ function handleConfirmPlannedExpenseSubmit(form) {
     if (index !== -1) {
       draft.currentBudget.plannedExpenses[index] = {
         ...draft.currentBudget.plannedExpenses[index],
-        nextOccurrenceDate,
+        nextOccurrenceDate: isRecurring
+          ? calculateNextOccurrenceDate(plannedExpense.nextOccurrenceDate, plannedExpense.recurrence)
+          : plannedExpense.nextOccurrenceDate,
+        isEnabled: isRecurring,
         updatedAt: now,
       };
     }
@@ -645,8 +875,7 @@ function handleConfirmPlannedExpenseSubmit(form) {
     return draft;
   });
 
-  hideNotification(`${REMINDER_ID_PREFIX}${plannedExpenseId}`);
-  shownReminderIds.delete(plannedExpenseId);
+  confirmingIds.delete(plannedExpenseId);
   closeModal();
   showNotification({ type: 'info', message: 'Расход подтверждён и сохранён.' });
 }
@@ -690,7 +919,7 @@ function openPostponePlannedExpenseModal(plannedExpenseId) {
     closeModal();
   });
 
-  return openModal({ title: 'Перенести плановый расход', content: form });
+  return openModal({ title: 'Перенести дату', content: form });
 }
 
 function handlePostponePlannedExpenseSubmit(form) {
@@ -725,8 +954,6 @@ function handlePostponePlannedExpenseSubmit(form) {
     return draft;
   });
 
-  hideNotification(`${REMINDER_ID_PREFIX}${plannedExpenseId}`);
-  shownReminderIds.delete(plannedExpenseId);
   closeModal();
   showNotification({ type: 'info', message: 'Дата планового расхода перенесена.' });
 }
@@ -746,18 +973,28 @@ function handleSkipPlannedExpense(plannedExpenseId) {
   }
 
   const now = new Date().toISOString();
-  const nextOccurrenceDate = calculateNextOccurrenceDate(
-    plannedExpense.nextOccurrenceDate,
-    plannedExpense.recurrence,
-  );
+  const isRecurring = isPlannedExpenseRecurring(plannedExpense.recurrence);
 
   updateAppState((draft) => {
     const index = draft.currentBudget.plannedExpenses.findIndex((item) => item.id === plannedExpenseId);
 
-    if (index !== -1) {
+    if (index === -1) {
+      return draft;
+    }
+
+    if (isRecurring) {
       draft.currentBudget.plannedExpenses[index] = {
         ...draft.currentBudget.plannedExpenses[index],
-        nextOccurrenceDate,
+        nextOccurrenceDate: calculateNextOccurrenceDate(
+          plannedExpense.nextOccurrenceDate,
+          plannedExpense.recurrence,
+        ),
+        updatedAt: now,
+      };
+    } else {
+      draft.currentBudget.plannedExpenses[index] = {
+        ...draft.currentBudget.plannedExpenses[index],
+        isEnabled: false,
         updatedAt: now,
       };
     }
@@ -765,34 +1002,7 @@ function handleSkipPlannedExpense(plannedExpenseId) {
     return draft;
   });
 
-  hideNotification(`${REMINDER_ID_PREFIX}${plannedExpenseId}`);
-  shownReminderIds.delete(plannedExpenseId);
   showNotification({ type: 'info', message: 'Плановый расход пропущен.' });
-}
-
-function handleCopyPlannedExpense(plannedExpenseId) {
-  const plannedExpense = findPlannedExpense(plannedExpenseId);
-
-  if (!plannedExpense) {
-    showNotification({ type: 'info', message: 'Плановый расход не найден.' });
-    return;
-  }
-
-  const now = new Date().toISOString();
-  const copy = {
-    ...structuredClone(plannedExpense),
-    id: generateId('planned-expense'),
-    name: `${plannedExpense.name} (копия)`,
-    createdAt: now,
-    updatedAt: now,
-  };
-
-  updateAppState((draft) => {
-    draft.currentBudget.plannedExpenses.push(copy);
-    return draft;
-  });
-
-  showNotification({ type: 'info', message: 'Копия планового расхода создана.' });
 }
 
 function handleTogglePlannedExpense(plannedExpenseId) {
@@ -836,30 +1046,7 @@ function handleDeletePlannedExpense(plannedExpenseId) {
     return draft;
   });
 
-  hideNotification(`${REMINDER_ID_PREFIX}${plannedExpenseId}`);
-  shownReminderIds.delete(plannedExpenseId);
   showNotification({ type: 'info', message: 'Плановый расход удалён.' });
-}
-
-function showDueReminders() {
-  const state = getAppState();
-  const dueItems = (state.currentBudget.plannedExpenses ?? []).filter((item) => isPlannedExpenseDue(item));
-
-  dueItems.forEach((plannedExpense) => {
-    const reminderId = `${REMINDER_ID_PREFIX}${plannedExpense.id}`;
-
-    if (shownReminderIds.has(plannedExpense.id)) {
-      return;
-    }
-
-    showNotification({
-      id: reminderId,
-      type: 'reminder',
-      message: `Запланирован расход «${plannedExpense.name}». Подтвердите выполнение операции.`,
-    });
-
-    shownReminderIds.add(plannedExpense.id);
-  });
 }
 
 function findPlannedExpense(plannedExpenseId) {
@@ -869,6 +1056,11 @@ function findPlannedExpense(plannedExpenseId) {
 
 function renderRecurrenceOptions(selectedValue = '') {
   const options = ['<option value="">Выберите периодичность</option>'];
+  const legacyOnceSelected = selectedValue === EXPECTED_INCOME_RECURRENCE_ONCE;
+
+  if (legacyOnceSelected) {
+    options.push(`<option value="${escapeHtml(EXPECTED_INCOME_RECURRENCE_ONCE)}" selected>Разово (устар.)</option>`);
+  }
 
   RECURRENCE_OPTIONS.forEach(({ value, label }) => {
     const selected = value === selectedValue ? ' selected' : '';
@@ -878,18 +1070,15 @@ function renderRecurrenceOptions(selectedValue = '') {
   return options.join('');
 }
 
-function renderSelectOptions(items, placeholder) {
+function renderSelectOptions(items, placeholder, selectedValue = '') {
   const options = [`<option value="">${placeholder}</option>`];
 
   items.forEach(({ id, name }) => {
-    options.push(`<option value="${escapeHtml(id)}">${escapeHtml(name)}</option>`);
+    const selected = id === selectedValue ? ' selected' : '';
+    options.push(`<option value="${escapeHtml(id)}"${selected}>${escapeHtml(name)}</option>`);
   });
 
   return options.join('');
-}
-
-function comparePlannedExpensesByNextDate(first, second) {
-  return String(first.nextOccurrenceDate).localeCompare(String(second.nextOccurrenceDate));
 }
 
 function clearFormErrors(form) {
