@@ -30,6 +30,7 @@ import { initPlannedExpenses } from './planned-expenses.js';
 import { initTemplates } from './templates.js';
 import { initAssets } from './assets.js';
 import { initCushion, syncReserveWarnings } from './cushion.js';
+import { initReports } from './reports.js';
 
 export {
   getAppState,
@@ -74,6 +75,10 @@ function bootstrap() {
         initAssets();
       }
 
+      if (sectionId === 'reports') {
+        initReports();
+      }
+
       if (sectionId === 'cushion') {
         initCushion();
       }
@@ -91,6 +96,7 @@ function bootstrap() {
   initTemplates();
   initAssets();
   initCushion();
+  initReports();
   syncReserveWarnings();
 
   applyTheme(appState.settings.theme);

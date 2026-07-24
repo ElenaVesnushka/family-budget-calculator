@@ -2086,6 +2086,337 @@ export function calculatePeriodBalance(state, referenceDate = new Date()) {
 }
 
 /**
+ * Человекочитаемое название периода отчёта.
+ */
+export function getReportPeriodLabel(periodType) {
+  const labels = {
+    [REPORT_PERIODS.WEEK]: 'Неделя',
+    [REPORT_PERIODS.MONTH]: 'Месяц',
+    [REPORT_PERIODS.YEAR]: 'Год',
+    [REPORT_PERIODS.CUSTOM]: 'Произвольный период',
+  };
+
+  return labels[periodType] ?? 'Период';
+}
+
+/**
+ * Границы выбранного периода отчёта (раздел 15 ТЗ).
+ * Для месяца используется дата начала финансового периода из настроек.
+ */
+export function getReportPeriodBounds(state, options = {}) {
+  const referenceDate = options.referenceDate ?? new Date();
+  const periodType = options.periodType
+    ?? state.reports?.preferences?.defaultPeriod
+    ?? REPORT_PERIODS.MONTH;
+  const customPeriod = options.customPeriod
+    ?? state.reports?.preferences?.customPeriod
+    ?? {};
+  const startDay = state.settings?.financialPeriodStartDay ?? 1;
+  const ref = startOfDay(referenceDate);
+
+  if (periodType === REPORT_PERIODS.WEEK) {
+    return {
+      periodType,
+      start: addDays(ref, -6),
+      end: ref,
+    };
+  }
+
+  if (periodType === REPORT_PERIODS.YEAR) {
+    const current = getFinancialPeriodBounds(ref, startDay);
+    const yearAgo = getFinancialPeriodBounds(addMonthsPreserveDay(ref, -11), startDay);
+
+    return {
+      periodType,
+      start: yearAgo.start,
+      end: current.end,
+    };
+  }
+
+  if (periodType === REPORT_PERIODS.CUSTOM) {
+    const parsedStart = parseIsoDate(customPeriod.start);
+    const parsedEnd = parseIsoDate(customPeriod.end);
+    const start = startOfDay(parsedStart ?? ref);
+    const end = startOfDay(parsedEnd ?? ref);
+
+    if (start <= end) {
+      return { periodType, start, end };
+    }
+
+    return { periodType, start: end, end: start };
+  }
+
+  const monthBounds = getFinancialPeriodBounds(ref, startDay);
+
+  return {
+    periodType: REPORT_PERIODS.MONTH,
+    start: monthBounds.start,
+    end: monthBounds.end,
+  };
+}
+
+function isDateWithinBounds(dateString, start, end) {
+  const date = parseIsoDate(dateString);
+
+  if (!date) {
+    return false;
+  }
+
+  const target = startOfDay(date);
+  return target >= start && target <= end;
+}
+
+/**
+ * Подтверждённые доходы в произвольном диапазоне дат (без капитализации вклада).
+ */
+export function getIncomesInDateRange(state, start, end) {
+  return (state.currentBudget?.incomes ?? []).filter((income) => {
+    if (income.incomeType === INCOME_TYPES.DEPOSIT_CAPITALIZATION) {
+      return false;
+    }
+
+    return isDateWithinBounds(income.date, start, end);
+  });
+}
+
+/**
+ * Подтверждённые расходы в произвольном диапазоне дат.
+ */
+export function getExpensesInDateRange(state, start, end) {
+  return (state.currentBudget?.expenses ?? []).filter((expense) => (
+    isDateWithinBounds(expense.date, start, end)
+  ));
+}
+
+function sumOperationAmounts(operations) {
+  return operations.reduce((total, item) => total + Number(item.amount ?? 0), 0);
+}
+
+function getInclusiveDayCount(start, end) {
+  const ms = startOfDay(end).getTime() - startOfDay(start).getTime();
+  return Math.floor(ms / (24 * 60 * 60 * 1000)) + 1;
+}
+
+function shiftPeriodBounds(start, end) {
+  const days = getInclusiveDayCount(start, end);
+  const previousEnd = addDays(start, -1);
+  const previousStart = addDays(previousEnd, -(days - 1));
+
+  return {
+    start: previousStart,
+    end: previousEnd,
+  };
+}
+
+function buildShareBreakdown(groups, total) {
+  return Object.entries(groups)
+    .map(([id, amount]) => ({
+      id,
+      amount,
+      sharePercent: total > 0 ? Math.round((amount / total) * 1000) / 10 : 0,
+    }))
+    .filter((item) => item.amount !== 0)
+    .sort((first, second) => second.amount - first.amount);
+}
+
+/**
+ * Информационные финансовые наблюдения по данным отчёта (раздел 15, 17 ТЗ).
+ * Не являются уведомлениями и не требуют действия пользователя.
+ */
+export function buildFinancialObservations(summary) {
+  const observations = [];
+
+  if (!summary) {
+    return observations;
+  }
+
+  if (summary.periodBalance < 0) {
+    observations.push('Расходы выбранного периода превышают доходы периода.');
+  }
+
+  if (summary.cushion.enabled && summary.cushionAmount > 0) {
+    if (summary.periodBalance < summary.cushionAmount && summary.periodBalance >= 0) {
+      observations.push('Баланс периода ниже финансовой подушки.');
+    } else if (summary.periodBalance >= summary.cushionAmount) {
+      observations.push('Баланс периода не ниже финансовой подушки.');
+    }
+  }
+
+  if (summary.previous) {
+    if (summary.incomesTotal > summary.previous.incomesTotal) {
+      observations.push('Доходы периода выше, чем в предыдущем сравнимом периоде.');
+    } else if (summary.incomesTotal < summary.previous.incomesTotal) {
+      observations.push('Доходы периода ниже, чем в предыдущем сравнимом периоде.');
+    }
+
+    if (summary.expensesTotal > summary.previous.expensesTotal) {
+      observations.push('Расходы периода выше, чем в предыдущем сравнимом периоде.');
+    } else if (summary.expensesTotal < summary.previous.expensesTotal) {
+      observations.push('Расходы периода ниже, чем в предыдущем сравнимом периоде.');
+    }
+  }
+
+  const topCategory = summary.expensesByCategory?.[0];
+
+  if (topCategory && summary.expensesTotal > 0 && topCategory.sharePercent >= 40) {
+    observations.push(
+      `Наибольшая доля расходов приходится на категорию «${topCategory.name}» (${topCategory.sharePercent}%).`,
+    );
+  }
+
+  if (summary.limits?.some((limit) => limit.overspend > 0)) {
+    observations.push('За выбранный период есть лимиты с перерасходом.');
+  }
+
+  if (summary.totalFunds > 0) {
+    observations.push(
+      `Общие средства составляют ${new Intl.NumberFormat('ru-RU', {
+        style: 'currency',
+        currency: 'RUB',
+        maximumFractionDigits: 0,
+      }).format(summary.totalFunds)} и учитываются отдельно от баланса периода.`,
+    );
+  }
+
+  return observations;
+}
+
+/**
+ * Сводка раздела «Отчёты и аналитика» за выбранный период.
+ */
+export function buildReportSummary(state, options = {}) {
+  const bounds = getReportPeriodBounds(state, options);
+  const incomes = getIncomesInDateRange(state, bounds.start, bounds.end);
+  const expenses = getExpensesInDateRange(state, bounds.start, bounds.end);
+  const incomesTotal = sumOperationAmounts(incomes);
+  const expensesTotal = sumOperationAmounts(expenses);
+  const periodBalance = incomesTotal - expensesTotal;
+
+  const incomeTypeGroups = {};
+  incomes.forEach((income) => {
+    const key = income.incomeType || 'unknown';
+    incomeTypeGroups[key] = (incomeTypeGroups[key] ?? 0) + Number(income.amount ?? 0);
+  });
+
+  const categoryGroups = {};
+  const articleGroups = {};
+  expenses.forEach((expense) => {
+    const categoryId = expense.categoryId || 'unknown';
+    const articleId = expense.articleId || 'unknown';
+    categoryGroups[categoryId] = (categoryGroups[categoryId] ?? 0) + Number(expense.amount ?? 0);
+    articleGroups[articleId] = (articleGroups[articleId] ?? 0) + Number(expense.amount ?? 0);
+  });
+
+  const categories = getExpenseCategories(state);
+  const articles = getAvailableExpenseArticles(state);
+
+  const expensesByCategory = buildShareBreakdown(categoryGroups, expensesTotal).map((item) => ({
+    ...item,
+    name: getReferenceName(categories, item.id),
+  }));
+
+  const expensesByArticle = buildShareBreakdown(articleGroups, expensesTotal).map((item) => ({
+    ...item,
+    name: getReferenceName(articles, item.id),
+  }));
+
+  const incomesByType = buildShareBreakdown(incomeTypeGroups, incomesTotal);
+
+  const previousBounds = shiftPeriodBounds(bounds.start, bounds.end);
+  const previousIncomesTotal = sumOperationAmounts(
+    getIncomesInDateRange(state, previousBounds.start, previousBounds.end),
+  );
+  const previousExpensesTotal = sumOperationAmounts(
+    getExpensesInDateRange(state, previousBounds.start, previousBounds.end),
+  );
+
+  const cushion = normalizeFinancialCushion(state.financialCushion);
+  const cushionAmount = calculateCushionAmount(state, bounds.end);
+  const currentFunds = calculateCurrentFunds(state);
+  const reserveFunds = calculateReserveFunds(state);
+  const totalFunds = calculateTotalFunds(state);
+
+  const limits = (state.currentBudget?.limits ?? []).map((limit) => {
+    const actualSpent = calculateActualSpentForLimit(limit, expenses);
+    const limitAmount = Number(limit.amount) || 0;
+    const remaining = Math.max(0, limitAmount - actualSpent);
+    const overspend = Math.max(0, actualSpent - limitAmount);
+    const usagePercent = limitAmount > 0
+      ? Math.round((actualSpent / limitAmount) * 100)
+      : (actualSpent > 0 ? 100 : 0);
+
+    return {
+      id: limit.id,
+      name: getLimitTargetName(state, limit),
+      typeLabel: getLimitTypeLabel(limit.limitType),
+      limitAmount,
+      actualSpent,
+      remaining,
+      overspend,
+      usagePercent,
+    };
+  });
+
+  const summary = {
+    periodType: bounds.periodType,
+    periodLabel: getReportPeriodLabel(bounds.periodType),
+    startDate: formatIsoDate(bounds.start),
+    endDate: formatIsoDate(bounds.end),
+    incomesTotal,
+    expensesTotal,
+    periodBalance,
+    incomesByType,
+    expensesByCategory,
+    expensesByArticle,
+    limits,
+    currentFunds,
+    reserveFunds,
+    totalFunds,
+    cushion,
+    cushionAmount,
+    previous: {
+      startDate: formatIsoDate(previousBounds.start),
+      endDate: formatIsoDate(previousBounds.end),
+      incomesTotal: previousIncomesTotal,
+      expensesTotal: previousExpensesTotal,
+      periodBalance: previousIncomesTotal - previousExpensesTotal,
+    },
+  };
+
+  summary.observations = buildFinancialObservations(summary);
+
+  return summary;
+}
+
+/**
+ * Нормализует предпочтения раздела отчётов.
+ */
+export function normalizeReports(reports) {
+  const defaults = createDefaultReports();
+
+  if (!reports || typeof reports !== 'object') {
+    return structuredClone(defaults);
+  }
+
+  const periodType = Object.values(REPORT_PERIODS).includes(reports.preferences?.defaultPeriod)
+    ? reports.preferences.defaultPeriod
+    : defaults.preferences.defaultPeriod;
+
+  const customStart = String(reports.preferences?.customPeriod?.start ?? '').trim() || null;
+  const customEnd = String(reports.preferences?.customPeriod?.end ?? '').trim() || null;
+
+  return {
+    preferences: {
+      defaultPeriod: periodType,
+      customPeriod: {
+        start: customStart && parseIsoDate(customStart) ? customStart : null,
+        end: customEnd && parseIsoDate(customEnd) ? customEnd : null,
+      },
+    },
+  };
+}
+
+/**
  * Нормализует настройки финансовой подушки.
  * Устаревший способ «процент от активов» мигрирует в фиксированную сумму.
  */
@@ -2397,7 +2728,7 @@ export function normalizeAppState(rawState) {
     templates: normalizeTemplates(migrated.templates),
     myAssets: normalizeMyAssets(deepMerge(defaults.myAssets, migrated.myAssets)),
     notifications: deepMerge(defaults.notifications, migrated.notifications),
-    reports: deepMerge(defaults.reports, migrated.reports),
+    reports: normalizeReports(migrated.reports),
     ui: {
       ...defaults.ui,
       ...migrated.ui,
