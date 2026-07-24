@@ -1,0 +1,184 @@
+/**
+ * Стили раздела «Доходы».
+ */
+
+.incomes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.incomes__toolbar {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.incomes__list {
+  min-height: 8rem;
+}
+
+.incomes__empty {
+  margin: 0;
+  padding: var(--space-6);
+  text-align: center;
+  color: var(--color-text-secondary);
+  background-color: var(--color-bg-subtle);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.incomes-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.incomes-table thead {
+  background-color: var(--color-bg-subtle);
+}
+
+.incomes-table th,
+.incomes-table td {
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.incomes-table th {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.incomes-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.incomes-table__amount {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-income);
+  white-space: nowrap;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.5rem;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  border: 1px solid transparent;
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.btn--primary {
+  color: #ffffff;
+  background-color: var(--color-accent);
+}
+
+.btn--primary:hover {
+  background-color: var(--color-accent-hover);
+}
+
+.btn--secondary {
+  color: var(--color-text);
+  background-color: var(--color-bg-elevated);
+  border-color: var(--color-border-strong);
+}
+
+.btn--secondary:hover {
+  background-color: var(--color-bg-subtle);
+}
+
+.incomes-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.form-field__label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+}
+
+.form-field__input {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background-color: var(--color-bg-elevated);
+  color: var(--color-text);
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.form-field__input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: var(--focus-ring);
+}
+
+.form-field__input[aria-invalid="true"] {
+  border-color: var(--color-expense);
+}
+
+.form-field__textarea {
+  min-height: 5.5rem;
+  resize: vertical;
+}
+
+.form-field__error {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-expense);
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  padding-top: var(--space-2);
+}
+
+@media (max-width: 768px) {
+  .incomes-table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  .form-actions {
+    flex-direction: column-reverse;
+  }
+
+  .form-actions .btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .incomes__toolbar .btn {
+    width: 100%;
+  }
+}

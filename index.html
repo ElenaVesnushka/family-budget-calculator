@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="css/layout.css">
   <link rel="stylesheet" href="css/components.css">
   <link rel="stylesheet" href="css/dashboard.css">
+  <link rel="stylesheet" href="css/incomes.css">
 </head>
 <body>
   <div id="app" class="app">
@@ -163,7 +164,21 @@
             </p>
           </header>
           <div class="app-section__content">
-            <div class="app-section__workspace" data-region="incomes" data-workspace="incomes"></div>
+            <div
+              id="incomes-workspace"
+              class="app-section__workspace app-section__workspace--active"
+              data-region="incomes"
+              data-workspace="incomes"
+            >
+              <div class="incomes">
+                <div class="incomes__toolbar">
+                  <button type="button" class="btn btn--primary" data-action="add-income">
+                    Добавить доход
+                  </button>
+                </div>
+                <div class="incomes__list" data-incomes-list role="region" aria-label="Список доходов"></div>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -308,6 +323,7 @@
 
   </div>
 
-  <script type="module" src="js/app.js"></script>
+  <script type="module" src="js/app.js?v=20260724"></script>
+  <script type="module" src="js/incomes.js"></script>
 </body>
 </html>

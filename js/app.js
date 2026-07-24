@@ -22,6 +22,7 @@ import {
 import { initNotifications, showNotification, hideNotification } from './notifications.js';
 import { initModals, openModal, closeModal, isModalOpen } from './modals.js';
 import { initDashboard } from './dashboard.js';
+import { initIncomes } from './incomes.js';
 
 export {
   getAppState,
@@ -42,12 +43,17 @@ function bootstrap() {
   initShell({
     onSectionChange(sectionId) {
       updateSessionState({ activeSection: sectionId });
+
+      if (sectionId === 'incomes') {
+        initIncomes();
+      }
     },
   });
 
   initNotifications(getNotificationsContainer());
   initModals(getModalRoot());
   initDashboard();
+  initIncomes();
 
   applyTheme(appState.settings.theme);
   showSection(appState.ui.activeSection);

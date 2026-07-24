@@ -7,6 +7,14 @@ let modalRoot = null;
 let activeModal = null;
 let previousFocus = null;
 
+function resolveModalRoot() {
+  if (!modalRoot) {
+    modalRoot = document.getElementById('modal-root');
+  }
+
+  return modalRoot;
+}
+
 /**
  * @param {HTMLElement} rootElement
  */
@@ -19,9 +27,13 @@ export function initModals(rootElement) {
  * @returns {HTMLElement|null} корневой элемент диалога
  */
 export function openModal({ title = '', content = null } = {}) {
-  if (!modalRoot) {
+  const root = resolveModalRoot();
+
+  if (!root) {
     return null;
   }
+
+  modalRoot = root;
 
   closeModal();
 
