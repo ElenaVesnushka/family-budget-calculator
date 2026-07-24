@@ -74,6 +74,8 @@ export function updateAppState(updater) {
     },
   });
 
+  document.dispatchEvent(new CustomEvent('appstate:updated'));
+
   return appState;
 }
 
@@ -96,6 +98,8 @@ export function replaceAppState(nextState) {
       ...(nextState.ui ?? appState.ui ?? {}),
     },
   });
+
+  document.dispatchEvent(new CustomEvent('appstate:updated'));
 
   return appState;
 }

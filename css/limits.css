@@ -1,0 +1,155 @@
+/**
+ * Стили раздела «Лимиты».
+ */
+
+.limits {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.limits__toolbar {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.limits__list {
+  min-height: 8rem;
+}
+
+.limits__empty {
+  margin: 0;
+  padding: var(--space-6);
+  text-align: center;
+  color: var(--color-text-secondary);
+  background-color: var(--color-bg-subtle);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.limits-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.limits-table thead {
+  background-color: var(--color-bg-subtle);
+}
+
+.limits-table th,
+.limits-table td {
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.limits-table th {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.limits-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.limits-table__row--warning {
+  background-color: var(--color-warning-subtle);
+}
+
+.limits-table__row--exceeded {
+  background-color: var(--color-expense-subtle);
+}
+
+.limits-table__name {
+  font-weight: var(--font-weight-semibold);
+}
+
+.limits-table__amount {
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+}
+
+.limits-table__remaining {
+  color: var(--color-text);
+  white-space: nowrap;
+}
+
+.limits-table__overspend {
+  color: var(--color-expense);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+}
+
+.limits-table__usage {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 8rem;
+}
+
+.limits-table__progress {
+  flex: 1;
+  height: 0.5rem;
+  background-color: var(--color-bg-subtle);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.limits-table__progress-bar {
+  display: block;
+  height: 100%;
+  background-color: var(--color-accent);
+  border-radius: var(--radius-full);
+  transition: width var(--transition-normal);
+}
+
+.limits-table__row--warning .limits-table__progress-bar {
+  background-color: var(--color-warning);
+}
+
+.limits-table__row--exceeded .limits-table__progress-bar {
+  background-color: var(--color-expense);
+}
+
+.limits-table__percent {
+  min-width: 2.75rem;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.limits-table__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.limits-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+@media (max-width: 768px) {
+  .limits-table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 640px) {
+  .limits__toolbar .btn {
+    width: 100%;
+  }
+}

@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="css/dashboard.css">
   <link rel="stylesheet" href="css/incomes.css">
   <link rel="stylesheet" href="css/expenses.css">
+  <link rel="stylesheet" href="css/limits.css">
 </head>
 <body>
   <div id="app" class="app">
@@ -229,7 +230,12 @@
             </p>
           </header>
           <div class="app-section__content">
-            <div class="app-section__workspace" data-region="limits" data-workspace="limits"></div>
+            <div
+              id="limits-workspace"
+              class="app-section__workspace"
+              data-region="limits"
+              data-workspace="limits"
+            ></div>
           </div>
         </section>
 
@@ -338,7 +344,7 @@
 
   </div>
 
-  <script type="module" src="js/app.js?v=20260724-4"></script>
+  <script type="module" src="js/app.js?v=20260724-6"></script>
   <script type="module" src="js/incomes.js"></script>
 </body>
 </html>

@@ -24,6 +24,7 @@ import { initModals, openModal, closeModal, isModalOpen } from './modals.js';
 import { initDashboard } from './dashboard.js';
 import { initIncomes } from './incomes.js';
 import { initExpenses } from './expenses.js';
+import { initLimits } from './limits.js';
 
 export {
   getAppState,
@@ -52,6 +53,10 @@ function bootstrap() {
       if (sectionId === 'expenses') {
         initExpenses();
       }
+
+      if (sectionId === 'limits') {
+        initLimits();
+      }
     },
   });
 
@@ -60,6 +65,7 @@ function bootstrap() {
   initDashboard();
   initIncomes();
   initExpenses();
+  initLimits();
 
   applyTheme(appState.settings.theme);
   showSection(appState.ui.activeSection);

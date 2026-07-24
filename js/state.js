@@ -281,6 +281,208 @@ export function getReferenceName(items, id) {
 }
 
 /**
+ * Категории расходов, доступные для установки лимита (раздел 9, словарь ТЗ).
+ */
+export function getLimitCategories(state) {
+  const allowedCategoryIds = new Set([
+    EXPENSE_CATEGORIES.MANDATORY,
+    EXPENSE_CATEGORIES.FOR_SOUL,
+  ]);
+
+  return getExpenseCategories(state).filter((category) => allowedCategoryIds.has(category.id));
+}
+
+/**
+ * Статьи расходов, доступные для установки лимита (только существующий справочник).
+ */
+export function getLimitArticles(state) {
+  return getAvailableExpenseArticles(state);
+}
+
+/** Порог использования лимита для предупреждающей индикации (раздел 9 ТЗ). */
+export const LIMIT_USAGE_WARNING_THRESHOLD = 80;
+
+const LIMIT_TYPE_LABELS = {
+  [LIMIT_TYPES.CATEGORY]: 'Лимит по категории',
+  [LIMIT_TYPES.ARTICLE]: 'Лимит по статье',
+};
+
+function startOfDay(date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function addDays(date, days) {
+  const result = new Date(date);
+  result.setDate(result.getDate() + days);
+  return result;
+}
+
+function daysInMonth(year, month) {
+  return new Date(year, month + 1, 0).getDate();
+}
+
+function clampDay(year, month, day) {
+  return Math.min(day, daysInMonth(year, month));
+}
+
+function parseIsoDate(dateString) {
+  if (!dateString) {
+    return null;
+  }
+
+  const [year, month, day] = dateString.split('-').map(Number);
+
+  if (!year || !month || !day) {
+    return null;
+  }
+
+  return new Date(year, month - 1, day);
+}
+
+/**
+ * Границы текущего финансового периода (раздел 9, 16 ТЗ).
+ */
+export function getFinancialPeriodBounds(referenceDate = new Date(), startDay = 1) {
+  const ref = startOfDay(referenceDate);
+  const normalizedStartDay = Math.min(Math.max(Number(startDay) || 1, 1), 31);
+  let year = ref.getFullYear();
+  let month = ref.getMonth();
+
+  if (ref.getDate() < normalizedStartDay) {
+    month -= 1;
+
+    if (month < 0) {
+      month = 11;
+      year -= 1;
+    }
+  }
+
+  const start = startOfDay(new Date(year, month, clampDay(year, month, normalizedStartDay)));
+
+  let nextMonth = month + 1;
+  let nextYear = year;
+
+  if (nextMonth > 11) {
+    nextMonth = 0;
+    nextYear += 1;
+  }
+
+  const nextStart = startOfDay(new Date(nextYear, nextMonth, clampDay(nextYear, nextMonth, normalizedStartDay)));
+  const end = addDays(nextStart, -1);
+
+  return { start, end };
+}
+
+/**
+ * Проверяет, попадает ли дата операции в финансовый период.
+ */
+export function isDateInFinancialPeriod(dateString, referenceDate = new Date(), startDay = 1) {
+  const date = parseIsoDate(dateString);
+
+  if (!date) {
+    return false;
+  }
+
+  const { start, end } = getFinancialPeriodBounds(referenceDate, startDay);
+  const target = startOfDay(date);
+
+  return target >= start && target <= end;
+}
+
+/**
+ * Расходы текущего финансового периода.
+ */
+export function getCurrentFinancialPeriodExpenses(state, referenceDate = new Date()) {
+  const startDay = state.settings?.financialPeriodStartDay ?? 1;
+  const { start, end } = getFinancialPeriodBounds(referenceDate, startDay);
+
+  return (state.currentBudget?.expenses ?? []).filter((expense) => {
+    const date = parseIsoDate(expense.date);
+
+    if (!date) {
+      return false;
+    }
+
+    const target = startOfDay(date);
+    return target >= start && target <= end;
+  });
+}
+
+/**
+ * Название цели лимита (категория или статья).
+ */
+export function getLimitTargetName(state, limit) {
+  if (limit.limitType === LIMIT_TYPES.CATEGORY) {
+    return getReferenceName(getLimitCategories(state), limit.targetId);
+  }
+
+  if (limit.limitType === LIMIT_TYPES.ARTICLE) {
+    return getReferenceName(getLimitArticles(state), limit.targetId);
+  }
+
+  return '—';
+}
+
+/**
+ * Человекочитаемый тип лимита.
+ */
+export function getLimitTypeLabel(limitType) {
+  return LIMIT_TYPE_LABELS[limitType] ?? '—';
+}
+
+/**
+ * Сумма фактических расходов по лимиту за переданный набор операций.
+ */
+export function calculateActualSpentForLimit(limit, expenses) {
+  if (limit.limitType === LIMIT_TYPES.CATEGORY) {
+    return expenses
+      .filter((expense) => expense.categoryId === limit.targetId)
+      .reduce((sum, expense) => sum + Number(expense.amount), 0);
+  }
+
+  if (limit.limitType === LIMIT_TYPES.ARTICLE) {
+    return expenses
+      .filter((expense) => expense.articleId === limit.targetId)
+      .reduce((sum, expense) => sum + Number(expense.amount), 0);
+  }
+
+  return 0;
+}
+
+/**
+ * Показатели использования лимита для текущего финансового периода.
+ */
+export function calculateLimitProgress(limit, state, referenceDate = new Date()) {
+  const expenses = getCurrentFinancialPeriodExpenses(state, referenceDate);
+  const actualSpent = calculateActualSpentForLimit(limit, expenses);
+  const limitAmount = Number(limit.amount) || 0;
+  const remaining = Math.max(0, limitAmount - actualSpent);
+  const overspend = Math.max(0, actualSpent - limitAmount);
+  const usagePercent = limitAmount > 0
+    ? Math.round((actualSpent / limitAmount) * 100)
+    : (actualSpent > 0 ? 100 : 0);
+
+  let status = 'normal';
+
+  if (overspend > 0) {
+    status = 'exceeded';
+  } else if (usagePercent >= LIMIT_USAGE_WARNING_THRESHOLD) {
+    status = 'warning';
+  }
+
+  return {
+    name: getLimitTargetName(state, limit),
+    typeLabel: getLimitTypeLabel(limit.limitType),
+    limitAmount,
+    actualSpent,
+    remaining,
+    overspend,
+    usagePercent,
+    status,
+  };
+}
+
+/**
  * Шаблон лимита (раздел 9 ТЗ).
  */
 export function createLimitShape() {
