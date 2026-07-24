@@ -76,7 +76,7 @@ function renderDashboard() {
 
   renderMood(region);
   renderCard(region, 'period-balance', renderPeriodBalanceContent);
-  renderCard(region, 'my-reserve', renderMyReserveContent);
+  renderCard(region, 'my-assets', renderMyAssetsContent);
   renderCard(region, 'incomes', renderIncomesContent);
   renderCard(region, 'expenses', renderExpensesContent);
   renderCard(region, 'cushion', renderCushionContent);
@@ -120,20 +120,16 @@ function renderPeriodBalanceContent() {
   `;
 }
 
-function renderMyReserveContent() {
+function renderMyAssetsContent() {
   const snapshot = calculateFinancialReserveSnapshot(getAppState());
-  const reserveClass = snapshot.myReserve < 0
-    ? 'dashboard-metric--negative'
-    : 'dashboard-metric--positive';
 
   return `
-    <div class="dashboard-metric ${reserveClass}">
-      <p class="dashboard-metric__value">${formatAmount(snapshot.myReserve)}</p>
+    <div class="dashboard-metric">
+      <p class="dashboard-metric__value">${formatAmount(snapshot.totalFunds)}</p>
       <p class="dashboard-metric__hint">
-        ${snapshot.cushion.enabled
-    ? `Средства сверх безопасного уровня · Общие: ${formatAmount(snapshot.totalFunds)}`
-    : 'Подушка отключена · равен общим средствам'}
+        Текущие: ${formatAmount(snapshot.currentFunds)} · Запасы: ${formatAmount(snapshot.reserveFunds)}
       </p>
+      <p class="dashboard-metric__sub">Объём активов · не влияет на оценку состояния</p>
     </div>
   `;
 }
@@ -175,16 +171,18 @@ function renderCushionContent() {
   return `
     <div class="dashboard-metric">
       <p class="dashboard-metric__value">${formatAmount(snapshot.targetAmount)}</p>
-      <p class="dashboard-metric__hint">Минимальный безопасный уровень · покрытие ${Math.round(snapshot.achievementPercent)}%</p>
+      <p class="dashboard-metric__hint">Минимальный безопасный уровень · баланс покрывает ${Math.round(snapshot.achievementPercent)}%</p>
       <div class="dashboard-progress">
         <div class="dashboard-progress__bar">
           <span class="dashboard-progress__fill" style="width: ${Math.min(100, snapshot.achievementPercent)}%"></span>
         </div>
       </div>
       <p class="dashboard-metric__sub">
-        ${snapshot.remainderToGoal > 0
-    ? `До безопасного уровня: ${formatAmount(snapshot.remainderToGoal)}`
-    : `Безопасный уровень соблюдён · Мой запас: ${formatAmount(snapshot.myReserve)}`}
+        ${snapshot.periodBalance < 0
+    ? `Баланс периода: ${formatAmount(snapshot.periodBalance)}`
+    : snapshot.remainderToGoal > 0
+      ? `До безопасного уровня: ${formatAmount(snapshot.remainderToGoal)}`
+      : `Безопасный уровень соблюдён · баланс: ${formatAmount(snapshot.periodBalance)}`}
       </p>
     </div>
   `;

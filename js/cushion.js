@@ -1,5 +1,6 @@
 /**
- * Модуль раздела «Финансовая подушка» и «Мой запас» (раздел 13 ТЗ).
+ * Модуль раздела «Финансовая подушка» (раздел 13 ТЗ).
+ * Подушка — минимальный безопасный уровень для сравнения с балансом периода.
  */
 
 import { getSectionRegion } from './ui.js';
@@ -9,7 +10,6 @@ import {
   CUSHION_CALCULATION_METHODS,
   buildFinancialCushionFromPayload,
   calculateFinancialReserveSnapshot,
-  calculateMyReserve,
   getCushionMethodLabel,
   validateFinancialCushionPayload,
 } from './state.js';
@@ -18,13 +18,11 @@ const WORKSPACE_ID = 'cushion-workspace';
 
 const CUSHION_METHOD_OPTIONS = [
   { value: CUSHION_CALCULATION_METHODS.FIXED, label: 'Фиксированная сумма' },
-  { value: CUSHION_CALCULATION_METHODS.INCOME_PERCENT, label: 'Процент от доходов' },
-  { value: CUSHION_CALCULATION_METHODS.ASSETS_PERCENT, label: 'Процент от общих средств' },
+  { value: CUSHION_CALCULATION_METHODS.INCOME_PERCENT, label: 'Процент от дохода' },
 ];
 
 let workspace = null;
 let stateUpdateListenerAttached = false;
-let previousMyReserve = null;
 
 function getWorkspace() {
   return document.getElementById(WORKSPACE_ID) ?? getSectionRegion('cushion');
@@ -69,7 +67,7 @@ function handleStateUpdated() {
 }
 
 /**
- * Синхронизирует предупреждения по показателю «Мой запас» (раздел 13 и 17 ТЗ).
+ * Синхронизирует предупреждения по балансу периода и подушке (раздел 13 и 17 ТЗ).
  */
 export function syncReserveWarnings() {
   if (!isStateInitialized()) {
@@ -77,35 +75,39 @@ export function syncReserveWarnings() {
   }
 
   const state = getAppState();
-  const myReserve = calculateMyReserve(state);
+  const snapshot = calculateFinancialReserveSnapshot(state);
+  const periodBalance = snapshot.periodBalance;
 
+  hideNotification('balance-below-cushion');
+  hideNotification('balance-negative');
   hideNotification('reserve-negative');
   hideNotification('reserve-decreasing');
 
   if (!state.financialCushion?.enabled) {
-    previousMyReserve = myReserve;
+    if (periodBalance < 0) {
+      showNotification({
+        id: 'balance-negative',
+        type: 'warning',
+        message: 'Текущие доходы не покрывают текущие расходы. Возможно, стоит пересмотреть расходы или ожидаемые поступления.',
+      });
+    }
+
     return;
   }
 
-  if (myReserve < 0) {
+  if (periodBalance < 0) {
     showNotification({
-      id: 'reserve-negative',
+      id: 'balance-negative',
       type: 'warning',
-      message: 'Объём общих средств меньше установленной финансовой подушки. Возможно, стоит пересмотреть расходы или изменить размер финансовой подушки.',
+      message: 'Текущие доходы не покрывают текущие расходы. Возможно, стоит пересмотреть расходы или ожидаемые поступления.',
     });
-  } else if (
-    previousMyReserve !== null
-    && myReserve < previousMyReserve
-    && previousMyReserve > 0
-  ) {
+  } else if (periodBalance < snapshot.targetAmount) {
     showNotification({
-      id: 'reserve-decreasing',
+      id: 'balance-below-cushion',
       type: 'warning',
-      message: 'Показатель «Мой запас» уменьшается. Проверьте запланированные расходы.',
+      message: 'Баланс периода ниже установленного безопасного уровня. Проверьте расходы и размер финансовой подушки.',
     });
   }
-
-  previousMyReserve = myReserve;
 }
 
 function ensureLayout() {
@@ -121,7 +123,7 @@ function createLayout() {
   container.className = 'cushion';
 
   container.innerHTML = `
-    <div class="cushion__overview" data-cushion-overview role="region" aria-label="Показатели финансовой подушки и запаса"></div>
+    <div class="cushion__overview" data-cushion-overview role="region" aria-label="Показатели финансовой подушки"></div>
     <div class="cushion__settings" data-cushion-settings role="region" aria-label="Настройки финансовой подушки"></div>
   `;
 
@@ -144,33 +146,32 @@ function renderOverview() {
   }
 
   const snapshot = calculateFinancialReserveSnapshot(getAppState());
-  const reserveClass = snapshot.myReserve < 0 ? 'cushion-metric--negative' : 'cushion-metric--positive';
+  const balanceClass = snapshot.periodBalance < 0
+    ? 'cushion-metric--negative'
+    : 'cushion-metric--positive';
 
   region.innerHTML = `
     <div class="cushion-overview">
       <article class="cushion-overview__card cushion-overview__card--primary">
-        <p class="cushion-overview__label">Мой запас</p>
-        <p class="cushion-overview__value ${reserveClass}">${formatAmount(snapshot.myReserve)}</p>
-        <p class="cushion-overview__hint">
-          ${snapshot.cushion.enabled
-    ? 'Средства сверх минимального безопасного уровня'
-    : 'Финансовая подушка отключена — «Мой запас» равен общим средствам'}
-        </p>
-      </article>
-      <article class="cushion-overview__card">
-        <p class="cushion-overview__label">Общие средства</p>
-        <p class="cushion-overview__value">${formatAmount(snapshot.totalFunds)}</p>
-        <p class="cushion-overview__hint">
-          Текущие: ${formatAmount(snapshot.currentFunds)} · Запасы: ${formatAmount(snapshot.reserveFunds)}
-        </p>
+        <p class="cushion-overview__label">Баланс периода</p>
+        <p class="cushion-overview__value ${balanceClass}">${formatAmount(snapshot.periodBalance)}</p>
+        <p class="cushion-overview__hint">Сравнивается с финансовой подушкой для оценки состояния</p>
       </article>
       ${snapshot.cushion.enabled ? renderProgressBlock(snapshot) : `
         <article class="cushion-overview__card cushion-overview__card--muted">
           <p class="cushion-overview__label">Финансовая подушка</p>
           <p class="cushion-overview__value">Отключена</p>
-          <p class="cushion-overview__hint">Включите подушку, чтобы задать минимальный безопасный уровень средств</p>
+          <p class="cushion-overview__hint">Включите подушку, чтобы задать минимальный безопасный уровень</p>
         </article>
       `}
+      <article class="cushion-overview__card">
+        <p class="cushion-overview__label">Мои средства</p>
+        <p class="cushion-overview__value">${formatAmount(snapshot.totalFunds)}</p>
+        <p class="cushion-overview__hint">
+          Текущие: ${formatAmount(snapshot.currentFunds)} · Запасы: ${formatAmount(snapshot.reserveFunds)}
+        </p>
+        <p class="cushion-overview__hint">Активы не используются для оценки текущего финансового состояния</p>
+      </article>
     </div>
   `;
 }
@@ -188,7 +189,7 @@ function renderProgressBlock(snapshot) {
       ${methodHint}
       <div class="cushion-progress">
         <div class="cushion-progress__header">
-          <span>Покрытие уровня: ${formatAmount(snapshot.currentCoverage)}</span>
+          <span>Баланс к уровню: ${formatAmount(snapshot.currentCoverage)}</span>
           <span>${Math.round(snapshot.achievementPercent)}%</span>
         </div>
         <div
@@ -197,14 +198,16 @@ function renderProgressBlock(snapshot) {
           aria-valuemin="0"
           aria-valuemax="100"
           aria-valuenow="${Math.round(snapshot.achievementPercent)}"
-          aria-label="Покрытие минимального безопасного уровня"
+          aria-label="Соотношение баланса периода и безопасного уровня"
         >
           <span class="cushion-progress__fill" style="width: ${Math.min(100, snapshot.achievementPercent)}%"></span>
         </div>
         <p class="cushion-progress__remainder">
-          ${snapshot.remainderToGoal > 0
-    ? `До безопасного уровня не хватает: ${formatAmount(snapshot.remainderToGoal)}`
-    : 'Минимальный безопасный уровень соблюдён'}
+          ${snapshot.periodBalance < 0
+    ? 'Баланс периода отрицательный'
+    : snapshot.remainderToGoal > 0
+      ? `До безопасного уровня не хватает: ${formatAmount(snapshot.remainderToGoal)}`
+      : 'Минимальный безопасный уровень соблюдён'}
         </p>
       </div>
     </article>
@@ -224,7 +227,7 @@ function renderSettings() {
   region.innerHTML = `
     <section class="cushion-settings">
       <h3 class="cushion-settings__title">Настройки финансовой подушки</h3>
-      <p class="cushion-settings__intro">Финансовая подушка — минимальный безопасный уровень средств. Она используется для оценки состояния, а не как сумма, которую просто вычитают из денег.</p>
+      <p class="cushion-settings__intro">Финансовая подушка — минимальный безопасный уровень. Она сравнивается с балансом периода и не вычитается из активов.</p>
       <form class="cushion-settings__form" id="${formId}" novalidate>
         <label class="cushion-settings__toggle">
           <input type="checkbox" name="enabled" ${cushion.enabled ? 'checked' : ''}>
@@ -247,14 +250,9 @@ function renderSettings() {
           <p class="form-field__error" data-error-for="fixedAmount" hidden></p>
         </div>
         <div class="form-field" data-cushion-field="income-percent">
-          <label class="form-field__label" for="cushion-income-percent">Процент от доходов текущего периода</label>
+          <label class="form-field__label" for="cushion-income-percent">Процент от дохода текущего периода</label>
           <input class="form-field__input" type="number" id="cushion-income-percent" name="incomePercent" min="0" max="100" step="0.01" inputmode="decimal" value="${escapeHtml(String(cushion.incomePercent))}">
           <p class="form-field__error" data-error-for="incomePercent" hidden></p>
-        </div>
-        <div class="form-field" data-cushion-field="assets-percent">
-          <label class="form-field__label" for="cushion-assets-percent">Процент от общих средств</label>
-          <input class="form-field__input" type="number" id="cushion-assets-percent" name="assetsPercent" min="0" max="100" step="0.01" inputmode="decimal" value="${escapeHtml(String(cushion.assetsPercent))}">
-          <p class="form-field__error" data-error-for="assetsPercent" hidden></p>
         </div>
         <div class="form-actions">
           <button type="submit" class="btn btn--primary">Сохранить настройки</button>
@@ -300,10 +298,6 @@ function updateMethodFieldsVisibility(form) {
   if (method === CUSHION_CALCULATION_METHODS.INCOME_PERCENT) {
     form.querySelector('[data-cushion-field="income-percent"]').hidden = false;
   }
-
-  if (method === CUSHION_CALCULATION_METHODS.ASSETS_PERCENT) {
-    form.querySelector('[data-cushion-field="assets-percent"]').hidden = false;
-  }
 }
 
 function handleSettingsSubmit(event) {
@@ -318,7 +312,6 @@ function handleSettingsSubmit(event) {
     calculationMethod: formData.get('calculationMethod'),
     fixedAmount: formData.get('fixedAmount'),
     incomePercent: formData.get('incomePercent'),
-    assetsPercent: formData.get('assetsPercent'),
   };
 
   const errors = validateFinancialCushionPayload(payload);

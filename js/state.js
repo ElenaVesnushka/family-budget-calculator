@@ -7,7 +7,7 @@
  * — myAssets (мои средства).
  */
 
-export const APP_STATE_VERSION = '1.1.0';
+export const APP_STATE_VERSION = '1.2.0';
 
 export const SECTION_IDS = [
   'dashboard',
@@ -88,8 +88,10 @@ export const REPORT_PERIODS = {
 export const CUSHION_CALCULATION_METHODS = {
   FIXED: 'fixed',
   INCOME_PERCENT: 'income-percent',
-  ASSETS_PERCENT: 'assets-percent',
 };
+
+/** @deprecated Устаревший способ; при загрузке мигрирует в fixed. */
+export const LEGACY_CUSHION_ASSETS_PERCENT = 'assets-percent';
 
 export const THEMES = {
   LIGHT: 'light',
@@ -147,7 +149,6 @@ function createDefaultFinancialCushion() {
     calculationMethod: CUSHION_CALCULATION_METHODS.FIXED,
     fixedAmount: 0,
     incomePercent: 0,
-    assetsPercent: 0,
   };
 }
 
@@ -1876,14 +1877,13 @@ export function calculateAssetsTotalsByPurpose(state) {
 
 const CUSHION_METHOD_LABELS = {
   [CUSHION_CALCULATION_METHODS.FIXED]: 'Фиксированная сумма',
-  [CUSHION_CALCULATION_METHODS.INCOME_PERCENT]: 'Процент от доходов',
-  [CUSHION_CALCULATION_METHODS.ASSETS_PERCENT]: 'Процент от общих средств',
+  [CUSHION_CALCULATION_METHODS.INCOME_PERCENT]: 'Процент от дохода',
 };
 
 /** Состояния финансового настроения на главном экране. */
 export const FINANCIAL_MOOD_STATES = {
   STABLE: 'stable',
-  ATTENTION: 'attention',
+  ACCEPTABLE: 'acceptable',
   ALERT: 'alert',
   CRITICAL: 'critical',
 };
@@ -1898,22 +1898,18 @@ export const FINANCIAL_MOOD_PHRASE_GROUPS = {
 
 const MOOD_STATE_LABELS = {
   [FINANCIAL_MOOD_STATES.STABLE]: 'Стабильное',
-  [FINANCIAL_MOOD_STATES.ATTENTION]: 'Внимание',
+  [FINANCIAL_MOOD_STATES.ACCEPTABLE]: 'Допустимое',
   [FINANCIAL_MOOD_STATES.ALERT]: 'Требует внимания',
   [FINANCIAL_MOOD_STATES.CRITICAL]: 'Критическое',
 };
-
-/** Доля подушки, ниже которой «Мой запас» считается близким к нулю. */
-const NEAR_ZERO_RESERVE_RATIO = 0.1;
 
 const STATE_PHRASE_GROUPS = {
   [FINANCIAL_MOOD_STATES.STABLE]: [
     FINANCIAL_MOOD_PHRASE_GROUPS.POSITIVE,
     FINANCIAL_MOOD_PHRASE_GROUPS.NEUTRAL,
   ],
-  [FINANCIAL_MOOD_STATES.ATTENTION]: [
+  [FINANCIAL_MOOD_STATES.ACCEPTABLE]: [
     FINANCIAL_MOOD_PHRASE_GROUPS.NEUTRAL,
-    FINANCIAL_MOOD_PHRASE_GROUPS.WARNING,
   ],
   [FINANCIAL_MOOD_STATES.ALERT]: [
     FINANCIAL_MOOD_PHRASE_GROUPS.WARNING,
@@ -1926,21 +1922,28 @@ const STATE_PHRASE_GROUPS = {
 const SYSTEM_MOOD_PHRASES = {
   [FINANCIAL_MOOD_PHRASE_GROUPS.POSITIVE]: [
     'Финансовое состояние выглядит устойчивым.',
-    'Минимальный безопасный уровень средств соблюдается.',
+    'Баланс периода выше безопасного уровня.',
   ],
   [FINANCIAL_MOOD_PHRASE_GROUPS.NEUTRAL]: [
     'Ситуация спокойная. Можно продолжать в привычном ритме.',
-    'Показатели находятся в обычном диапазоне.',
+    'Баланс периода на границе безопасного уровня.',
   ],
   [FINANCIAL_MOOD_PHRASE_GROUPS.WARNING]: [
-    'Стоит внимательнее следить за расходами и запасом средств.',
-    'Запас относительно безопасного уровня снизился.',
+    'Баланс периода положительный, но ниже безопасного уровня.',
+    'Стоит внимательнее следить за доходами и расходами.',
   ],
   [FINANCIAL_MOOD_PHRASE_GROUPS.CRITICAL]: [
-    'Финансовые показатели требуют внимания.',
+    'Доходы периода не покрывают расходы периода.',
     'Полезно пересмотреть расходы или размер финансовой подушки.',
   ],
 };
+
+/**
+ * Округляет денежную сумму до копеек для корректного сравнения.
+ */
+function roundMoney(value) {
+  return Math.round(Number(value) * 100) / 100;
+}
 
 /**
  * Человекочитаемый способ расчёта финансовой подушки.
@@ -2024,6 +2027,7 @@ export function calculatePeriodBalance(state, referenceDate = new Date()) {
 
 /**
  * Нормализует настройки финансовой подушки.
+ * Устаревший способ «процент от активов» мигрирует в фиксированную сумму.
  */
 export function normalizeFinancialCushion(financialCushion) {
   const defaults = createDefaultFinancialCushion();
@@ -2032,9 +2036,15 @@ export function normalizeFinancialCushion(financialCushion) {
     return structuredClone(defaults);
   }
 
-  const method = Object.values(CUSHION_CALCULATION_METHODS).includes(financialCushion.calculationMethod)
-    ? financialCushion.calculationMethod
-    : defaults.calculationMethod;
+  let method = financialCushion.calculationMethod;
+
+  if (method === LEGACY_CUSHION_ASSETS_PERCENT) {
+    method = CUSHION_CALCULATION_METHODS.FIXED;
+  }
+
+  if (!Object.values(CUSHION_CALCULATION_METHODS).includes(method)) {
+    method = defaults.calculationMethod;
+  }
 
   return {
     enabled: financialCushion.enabled !== false,
@@ -2044,9 +2054,6 @@ export function normalizeFinancialCushion(financialCushion) {
       : 0,
     incomePercent: Number.isFinite(Number(financialCushion.incomePercent))
       ? Math.min(100, Math.max(0, Number(financialCushion.incomePercent)))
-      : 0,
-    assetsPercent: Number.isFinite(Number(financialCushion.assetsPercent))
-      ? Math.min(100, Math.max(0, Number(financialCushion.assetsPercent)))
       : 0,
   };
 }
@@ -2082,19 +2089,9 @@ export function validateFinancialCushionPayload(payload) {
     const percent = Number(String(payload.incomePercent ?? '').trim());
 
     if (!String(payload.incomePercent ?? '').trim()) {
-      errors.incomePercent = 'Укажите процент от доходов.';
+      errors.incomePercent = 'Укажите процент от дохода.';
     } else if (!Number.isFinite(percent) || percent < 0 || percent > 100) {
       errors.incomePercent = 'Процент должен быть от 0 до 100.';
-    }
-  }
-
-  if (method === CUSHION_CALCULATION_METHODS.ASSETS_PERCENT) {
-    const percent = Number(String(payload.assetsPercent ?? '').trim());
-
-    if (!String(payload.assetsPercent ?? '').trim()) {
-      errors.assetsPercent = 'Укажите процент от общих средств.';
-    } else if (!Number.isFinite(percent) || percent < 0 || percent > 100) {
-      errors.assetsPercent = 'Процент должен быть от 0 до 100.';
     }
   }
 
@@ -2116,12 +2113,11 @@ export function buildFinancialCushionFromPayload(payload, existingCushion = null
     calculationMethod: String(payload.calculationMethod ?? base.calculationMethod).trim(),
     fixedAmount: String(payload.fixedAmount ?? base.fixedAmount).trim(),
     incomePercent: String(payload.incomePercent ?? base.incomePercent).trim(),
-    assetsPercent: String(payload.assetsPercent ?? base.assetsPercent).trim(),
   });
 }
 
 /**
- * Рассчитывает целевой размер финансовой подушки.
+ * Рассчитывает целевой размер финансовой подушки (безопасный уровень).
  */
 export function calculateCushionAmount(state, referenceDate = new Date()) {
   const cushion = normalizeFinancialCushion(state.financialCushion);
@@ -2139,27 +2135,12 @@ export function calculateCushionAmount(state, referenceDate = new Date()) {
     return (incomesTotal * cushion.incomePercent) / 100;
   }
 
-  if (cushion.calculationMethod === CUSHION_CALCULATION_METHODS.ASSETS_PERCENT) {
-    const totalFunds = calculateTotalFunds(state);
-    return (totalFunds * cushion.assetsPercent) / 100;
-  }
-
   return 0;
 }
 
 /**
- * Рассчитывает показатель «Мой запас» (раздел 13 ТЗ).
- * Мой запас = Общие средства − Финансовая подушка.
- */
-export function calculateMyReserve(state, referenceDate = new Date()) {
-  const totalFunds = calculateTotalFunds(state);
-  const cushionAmount = calculateCushionAmount(state, referenceDate);
-
-  return totalFunds - cushionAmount;
-}
-
-/**
- * Сводка по финансовой подушке и «Мой запас».
+ * Сводка по балансу периода, средствам и финансовой подушке.
+ * Подушка сравнивается с балансом периода, а не вычитается из активов.
  */
 export function calculateFinancialReserveSnapshot(state, referenceDate = new Date()) {
   const cushion = normalizeFinancialCushion(state.financialCushion);
@@ -2167,15 +2148,27 @@ export function calculateFinancialReserveSnapshot(state, referenceDate = new Dat
   const reserveFunds = calculateReserveFunds(state);
   const totalFunds = calculateTotalFunds(state);
   const targetAmount = calculateCushionAmount(state, referenceDate);
-  const myReserve = totalFunds - targetAmount;
-  const currentCoverage = Math.min(totalFunds, targetAmount);
-  const achievementPercent = targetAmount > 0
-    ? Math.min(100, (totalFunds / targetAmount) * 100)
-    : (cushion.enabled ? 100 : 0);
-  const remainderToGoal = Math.max(0, targetAmount - totalFunds);
   const periodIncomesTotal = calculateCurrentPeriodIncomesTotal(state, referenceDate);
   const periodExpensesTotal = calculateCurrentPeriodExpensesTotal(state, referenceDate);
   const periodBalance = periodIncomesTotal - periodExpensesTotal;
+
+  let achievementPercent = 0;
+  let currentCoverage = 0;
+  let remainderToGoal = 0;
+
+  if (!cushion.enabled) {
+    achievementPercent = 0;
+  } else if (targetAmount <= 0) {
+    achievementPercent = periodBalance >= 0 ? 100 : 0;
+    currentCoverage = Math.max(0, periodBalance);
+  } else if (periodBalance < 0) {
+    achievementPercent = 0;
+    remainderToGoal = targetAmount - periodBalance;
+  } else {
+    currentCoverage = Math.min(periodBalance, targetAmount);
+    achievementPercent = Math.min(100, (periodBalance / targetAmount) * 100);
+    remainderToGoal = Math.max(0, targetAmount - periodBalance);
+  }
 
   return {
     cushion,
@@ -2186,7 +2179,6 @@ export function calculateFinancialReserveSnapshot(state, referenceDate = new Dat
     currentCoverage,
     achievementPercent,
     remainderToGoal,
-    myReserve,
     periodIncomesTotal,
     periodExpensesTotal,
     periodBalance,
@@ -2194,38 +2186,33 @@ export function calculateFinancialReserveSnapshot(state, referenceDate = new Dat
 }
 
 /**
- * Определяет, близок ли «Мой запас» к нулю относительно подушки.
- */
-function isMyReserveNearZero(myReserve, cushionAmount) {
-  if (!(myReserve > 0) || !(cushionAmount > 0)) {
-    return false;
-  }
-
-  return myReserve <= cushionAmount * NEAR_ZERO_RESERVE_RATIO;
-}
-
-/**
  * Определяет состояние финансового настроения.
- * Учитывает баланс периода, «Мой запас» и финансовую подушку.
+ * Сравнение: баланс периода ↔ финансовая подушка.
  */
 export function determineFinancialMoodState(state, referenceDate = new Date()) {
   const snapshot = calculateFinancialReserveSnapshot(state, referenceDate);
-  const { myReserve, periodBalance, targetAmount, cushion } = snapshot;
-  const cushionAmount = cushion.enabled ? targetAmount : 0;
+  const periodBalance = roundMoney(snapshot.periodBalance);
+  const cushionAmount = snapshot.cushion.enabled
+    ? roundMoney(snapshot.targetAmount)
+    : 0;
 
-  if (periodBalance < 0 || myReserve < 0) {
+  if (periodBalance < 0) {
     return FINANCIAL_MOOD_STATES.CRITICAL;
   }
 
-  if (isMyReserveNearZero(myReserve, cushionAmount)) {
-    return FINANCIAL_MOOD_STATES.ALERT;
+  if (!snapshot.cushion.enabled) {
+    return FINANCIAL_MOOD_STATES.STABLE;
   }
 
-  if (cushion.enabled && cushionAmount > 0 && myReserve < cushionAmount) {
-    return FINANCIAL_MOOD_STATES.ATTENTION;
+  if (periodBalance > cushionAmount) {
+    return FINANCIAL_MOOD_STATES.STABLE;
   }
 
-  return FINANCIAL_MOOD_STATES.STABLE;
+  if (periodBalance === cushionAmount) {
+    return FINANCIAL_MOOD_STATES.ACCEPTABLE;
+  }
+
+  return FINANCIAL_MOOD_STATES.ALERT;
 }
 
 /**
