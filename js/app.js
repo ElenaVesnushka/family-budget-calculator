@@ -4,7 +4,14 @@
  * Инициализирует оболочку, загружает состояние и синхронизирует интерфейс.
  */
 
-import { loadAppState, saveAppState } from './storage.js';
+import {
+  initStateService,
+  getAppState,
+  updateAppState,
+  replaceAppState,
+  resetAppState,
+  updateSessionState,
+} from './state-service.js';
 import {
   initShell,
   applyTheme,
@@ -15,29 +22,25 @@ import {
 import { initNotifications, showNotification, hideNotification } from './notifications.js';
 import { initModals, openModal, closeModal, isModalOpen } from './modals.js';
 
-/**
- * Глобальное состояние приложения.
- * Модули получают доступ через getAppState / setAppState.
- */
-let appState = null;
-
-export function getAppState() {
-  return appState;
-}
-
-export function setAppState(nextState) {
-  appState = saveAppState(nextState);
-  return appState;
-}
-
-export { showNotification, hideNotification, openModal, closeModal, isModalOpen };
+export {
+  getAppState,
+  updateAppState,
+  replaceAppState,
+  resetAppState,
+  updateSessionState,
+  showNotification,
+  hideNotification,
+  openModal,
+  closeModal,
+  isModalOpen,
+};
 
 function bootstrap() {
-  appState = loadAppState();
+  const appState = initStateService();
 
   initShell({
     onSectionChange(sectionId) {
-      appState.ui.activeSection = sectionId;
+      updateSessionState({ activeSection: sectionId });
     },
   });
 

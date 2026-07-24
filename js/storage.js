@@ -7,7 +7,7 @@
  */
 
 import {
-  createEmptyAppState,
+  createNewBudget,
   normalizeAppState,
   extractPersistedState,
 } from './state.js';
@@ -15,46 +15,88 @@ import {
 const STORAGE_KEY = 'family-budget-calculator';
 
 /**
- * Загружает состояние приложения из localStorage.
- * При отсутствии или повреждении данных возвращает начальную структуру.
+ * Проверяет наличие сохранённых данных в localStorage.
  */
-export function loadAppState() {
+export function hasStoredData() {
+  return localStorage.getItem(STORAGE_KEY) !== null;
+}
+
+/**
+ * Загружает и нормализует состояние из localStorage.
+ * Возвращает null, если сохранённых данных нет.
+ */
+export function loadPersistedState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
 
     if (!raw) {
-      return createEmptyAppState();
+      return null;
     }
 
     const parsed = JSON.parse(raw);
     return normalizeAppState(parsed);
   } catch {
-    return createEmptyAppState();
+    return null;
   }
 }
 
 /**
- * Сохраняет состояние приложения в localStorage.
+ * Инициализирует состояние при запуске:
+ * загружает сохранённые данные или создаёт новый бюджет.
+ */
+export function initializeAppState() {
+  const persisted = loadPersistedState();
+
+  if (persisted) {
+    return persisted;
+  }
+
+  const newBudget = createNewBudget();
+  return savePersistedState(newBudget);
+}
+
+/**
+ * Сохраняет состояние в localStorage.
  * Сессионная часть (ui) не сохраняется.
  */
-export function saveAppState(state) {
-  const persisted = extractPersistedState(state);
-  persisted.meta.lastSavedAt = new Date().toISOString();
+export function savePersistedState(state) {
+  const normalized = normalizeAppState(extractPersistedState(state));
+  normalized.meta.lastSavedAt = new Date().toISOString();
 
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(persisted));
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
 
   return {
-    ...state,
-    meta: { ...state.meta, lastSavedAt: persisted.meta.lastSavedAt },
+    ...normalized,
+    ui: state.ui ?? { activeSection: 'dashboard' },
+    meta: { ...normalized.meta },
   };
 }
 
 /**
- * Удаляет все сохранённые данные и возвращает начальную структуру.
+ * @deprecated Используйте initializeAppState через state-service.
  */
-export function resetAppState() {
+export function loadAppState() {
+  return initializeAppState();
+}
+
+/**
+ * @deprecated Используйте savePersistedState через state-service.
+ */
+export function saveAppState(state) {
+  return savePersistedState(state);
+}
+
+/**
+ * Удаляет все сохранённые данные и возвращает новый бюджет без сохранения.
+ */
+export function resetStoredState() {
   localStorage.removeItem(STORAGE_KEY);
-  return createEmptyAppState();
+  return createNewBudget();
+}
+
+/** @deprecated Используйте resetStoredState */
+export function resetAppState() {
+  return resetStoredState();
 }
 
 /**
