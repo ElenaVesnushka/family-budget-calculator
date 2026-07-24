@@ -17,6 +17,7 @@
   <link rel="stylesheet" href="css/planned-expenses.css">
   <link rel="stylesheet" href="css/templates.css">
   <link rel="stylesheet" href="css/assets.css">
+  <link rel="stylesheet" href="css/cushion.css">
 </head>
 <body>
   <div id="app" class="app">
@@ -101,18 +102,22 @@
               data-workspace="dashboard"
             >
               <div class="dashboard">
+                <div class="dashboard-mood" data-dashboard-mood aria-live="polite">
+                  <p class="dashboard-mood__label">Финансовое настроение</p>
+                  <p class="dashboard-mood__text">—</p>
+                </div>
                 <div class="dashboard__grid">
-                  <article class="dashboard-card" data-card="balance">
+                  <article class="dashboard-card dashboard-card--reserve" data-card="my-reserve">
                     <header class="dashboard-card__header">
-                      <h3 class="dashboard-card__title" id="dashboard-card-title-balance">Баланс</h3>
+                      <h3 class="dashboard-card__title" id="dashboard-card-title-my-reserve">Мой запас</h3>
                     </header>
-                    <div class="dashboard-card__body" data-card-content="balance" aria-labelledby="dashboard-card-title-balance">
+                    <div class="dashboard-card__body" data-card-content="my-reserve" aria-labelledby="dashboard-card-title-my-reserve">
                       <div class="dashboard-card__placeholder"></div>
                     </div>
                   </article>
                   <article class="dashboard-card dashboard-card--income" data-card="incomes">
                     <header class="dashboard-card__header">
-                      <h3 class="dashboard-card__title" id="dashboard-card-title-incomes">Доходы месяца</h3>
+                      <h3 class="dashboard-card__title" id="dashboard-card-title-incomes">Доходы периода</h3>
                     </header>
                     <div class="dashboard-card__body" data-card-content="incomes" aria-labelledby="dashboard-card-title-incomes">
                       <div class="dashboard-card__placeholder"></div>
@@ -120,17 +125,9 @@
                   </article>
                   <article class="dashboard-card dashboard-card--expense" data-card="expenses">
                     <header class="dashboard-card__header">
-                      <h3 class="dashboard-card__title" id="dashboard-card-title-expenses">Расходы месяца</h3>
+                      <h3 class="dashboard-card__title" id="dashboard-card-title-expenses">Расходы периода</h3>
                     </header>
                     <div class="dashboard-card__body" data-card-content="expenses" aria-labelledby="dashboard-card-title-expenses">
-                      <div class="dashboard-card__placeholder"></div>
-                    </div>
-                  </article>
-                  <article class="dashboard-card" data-card="plan-fact">
-                    <header class="dashboard-card__header">
-                      <h3 class="dashboard-card__title" id="dashboard-card-title-plan-fact">План / Факт</h3>
-                    </header>
-                    <div class="dashboard-card__body" data-card-content="plan-fact" aria-labelledby="dashboard-card-title-plan-fact">
                       <div class="dashboard-card__placeholder"></div>
                     </div>
                   </article>
@@ -139,14 +136,6 @@
                       <h3 class="dashboard-card__title" id="dashboard-card-title-cushion">Финансовая подушка</h3>
                     </header>
                     <div class="dashboard-card__body" data-card-content="cushion" aria-labelledby="dashboard-card-title-cushion">
-                      <div class="dashboard-card__placeholder"></div>
-                    </div>
-                  </article>
-                  <article class="dashboard-card dashboard-card--wide" data-card="recent">
-                    <header class="dashboard-card__header">
-                      <h3 class="dashboard-card__title" id="dashboard-card-title-recent">Последние операции</h3>
-                    </header>
-                    <div class="dashboard-card__body" data-card-content="recent" aria-labelledby="dashboard-card-title-recent">
                       <div class="dashboard-card__placeholder"></div>
                     </div>
                   </article>
@@ -341,7 +330,12 @@
             </p>
           </header>
           <div class="app-section__content">
-            <div class="app-section__workspace" data-region="cushion" data-workspace="cushion"></div>
+            <div
+              class="app-section__workspace"
+              id="cushion-workspace"
+              data-region="cushion"
+              data-workspace="cushion"
+            ></div>
           </div>
         </section>
 
@@ -437,7 +431,7 @@
 
   </div>
 
-  <script type="module" src="js/app.js?v=20260724-12"></script>
+  <script type="module" src="js/app.js?v=20260724-13"></script>
   <script type="module" src="js/incomes.js"></script>
 </body>
 </html>

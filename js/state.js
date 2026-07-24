@@ -1795,6 +1795,282 @@ export function calculateAssetsTotalsByType(state) {
   return totals;
 }
 
+const CUSHION_METHOD_LABELS = {
+  [CUSHION_CALCULATION_METHODS.FIXED]: 'Фиксированная сумма',
+  [CUSHION_CALCULATION_METHODS.INCOME_PERCENT]: 'Процент от доходов',
+  [CUSHION_CALCULATION_METHODS.ASSETS_PERCENT]: 'Процент от общего объёма средств',
+};
+
+const MOOD_GROUPS = {
+  POSITIVE: 'positive',
+  WARNING: 'warning',
+  NEUTRAL: 'neutral',
+  NEGATIVE: 'negative',
+};
+
+/**
+ * Человекочитаемый способ расчёта финансовой подушки.
+ */
+export function getCushionMethodLabel(method) {
+  return CUSHION_METHOD_LABELS[method] ?? '—';
+}
+
+/**
+ * Доходы текущего финансового периода (без капитализации вклада).
+ */
+export function getCurrentFinancialPeriodIncomes(state, referenceDate = new Date()) {
+  const startDay = state.settings?.financialPeriodStartDay ?? 1;
+  const { start, end } = getFinancialPeriodBounds(referenceDate, startDay);
+
+  return (state.currentBudget?.incomes ?? []).filter((income) => {
+    if (income.incomeType === INCOME_TYPES.DEPOSIT_CAPITALIZATION) {
+      return false;
+    }
+
+    const date = parseIsoDate(income.date);
+
+    if (!date) {
+      return false;
+    }
+
+    const target = startOfDay(date);
+    return target >= start && target <= end;
+  });
+}
+
+/**
+ * Сумма доходов текущего финансового периода.
+ */
+export function calculateCurrentPeriodIncomesTotal(state, referenceDate = new Date()) {
+  return getCurrentFinancialPeriodIncomes(state, referenceDate)
+    .reduce((total, income) => total + Number(income.amount ?? 0), 0);
+}
+
+/**
+ * Сумма расходов текущего финансового периода.
+ */
+export function calculateCurrentPeriodExpensesTotal(state, referenceDate = new Date()) {
+  return getCurrentFinancialPeriodExpenses(state, referenceDate)
+    .reduce((total, expense) => total + Number(expense.amount ?? 0), 0);
+}
+
+/**
+ * Нормализует настройки финансовой подушки.
+ */
+export function normalizeFinancialCushion(financialCushion) {
+  const defaults = createDefaultFinancialCushion();
+
+  if (!financialCushion || typeof financialCushion !== 'object') {
+    return structuredClone(defaults);
+  }
+
+  const method = Object.values(CUSHION_CALCULATION_METHODS).includes(financialCushion.calculationMethod)
+    ? financialCushion.calculationMethod
+    : defaults.calculationMethod;
+
+  return {
+    enabled: financialCushion.enabled !== false,
+    calculationMethod: method,
+    fixedAmount: Number.isFinite(Number(financialCushion.fixedAmount))
+      ? Math.max(0, Number(financialCushion.fixedAmount))
+      : 0,
+    incomePercent: Number.isFinite(Number(financialCushion.incomePercent))
+      ? Math.min(100, Math.max(0, Number(financialCushion.incomePercent)))
+      : 0,
+    assetsPercent: Number.isFinite(Number(financialCushion.assetsPercent))
+      ? Math.min(100, Math.max(0, Number(financialCushion.assetsPercent)))
+      : 0,
+  };
+}
+
+/**
+ * Валидация настроек финансовой подушки.
+ */
+export function validateFinancialCushionPayload(payload) {
+  const errors = {};
+  const enabled = payload.enabled !== false && payload.enabled !== 'false';
+  const method = String(payload.calculationMethod ?? '').trim();
+
+  if (!enabled) {
+    return errors;
+  }
+
+  if (!method || !Object.values(CUSHION_CALCULATION_METHODS).includes(method)) {
+    errors.calculationMethod = 'Выберите способ расчёта.';
+    return errors;
+  }
+
+  if (method === CUSHION_CALCULATION_METHODS.FIXED) {
+    const amount = Number(String(payload.fixedAmount ?? '').trim());
+
+    if (!String(payload.fixedAmount ?? '').trim()) {
+      errors.fixedAmount = 'Укажите сумму финансовой подушки.';
+    } else if (!Number.isFinite(amount) || amount < 0) {
+      errors.fixedAmount = 'Укажите корректную сумму.';
+    }
+  }
+
+  if (method === CUSHION_CALCULATION_METHODS.INCOME_PERCENT) {
+    const percent = Number(String(payload.incomePercent ?? '').trim());
+
+    if (!String(payload.incomePercent ?? '').trim()) {
+      errors.incomePercent = 'Укажите процент от доходов.';
+    } else if (!Number.isFinite(percent) || percent < 0 || percent > 100) {
+      errors.incomePercent = 'Процент должен быть от 0 до 100.';
+    }
+  }
+
+  if (method === CUSHION_CALCULATION_METHODS.ASSETS_PERCENT) {
+    const percent = Number(String(payload.assetsPercent ?? '').trim());
+
+    if (!String(payload.assetsPercent ?? '').trim()) {
+      errors.assetsPercent = 'Укажите процент от общего объёма средств.';
+    } else if (!Number.isFinite(percent) || percent < 0 || percent > 100) {
+      errors.assetsPercent = 'Процент должен быть от 0 до 100.';
+    }
+  }
+
+  return errors;
+}
+
+/**
+ * Собирает настройки подушки из данных формы.
+ */
+export function buildFinancialCushionFromPayload(payload, existingCushion = null) {
+  const enabled = payload.enabled !== false && payload.enabled !== 'false';
+  const base = existingCushion
+    ? { ...existingCushion }
+    : createDefaultFinancialCushion();
+
+  return normalizeFinancialCushion({
+    ...base,
+    enabled,
+    calculationMethod: String(payload.calculationMethod ?? base.calculationMethod).trim(),
+    fixedAmount: String(payload.fixedAmount ?? base.fixedAmount).trim(),
+    incomePercent: String(payload.incomePercent ?? base.incomePercent).trim(),
+    assetsPercent: String(payload.assetsPercent ?? base.assetsPercent).trim(),
+  });
+}
+
+/**
+ * Доступные средства для расчёта «Мой запас» (активные средства, раздел 14 ТЗ).
+ */
+export function calculateAvailableFunds(state) {
+  return calculateTotalActiveAssets(state);
+}
+
+/**
+ * Рассчитывает целевой размер финансовой подушки.
+ */
+export function calculateCushionAmount(state, referenceDate = new Date()) {
+  const cushion = normalizeFinancialCushion(state.financialCushion);
+
+  if (!cushion.enabled) {
+    return 0;
+  }
+
+  if (cushion.calculationMethod === CUSHION_CALCULATION_METHODS.FIXED) {
+    return cushion.fixedAmount;
+  }
+
+  if (cushion.calculationMethod === CUSHION_CALCULATION_METHODS.INCOME_PERCENT) {
+    const incomesTotal = calculateCurrentPeriodIncomesTotal(state, referenceDate);
+    return (incomesTotal * cushion.incomePercent) / 100;
+  }
+
+  if (cushion.calculationMethod === CUSHION_CALCULATION_METHODS.ASSETS_PERCENT) {
+    const assetsTotal = calculateTotalActiveAssets(state);
+    return (assetsTotal * cushion.assetsPercent) / 100;
+  }
+
+  return 0;
+}
+
+/**
+ * Рассчитывает показатель «Мой запас» (раздел 13 ТЗ).
+ */
+export function calculateMyReserve(state, referenceDate = new Date()) {
+  const availableFunds = calculateAvailableFunds(state);
+  const cushionAmount = calculateCushionAmount(state, referenceDate);
+
+  return availableFunds - cushionAmount;
+}
+
+/**
+ * Сводка по финансовой подушке и «Мой запас».
+ */
+export function calculateFinancialReserveSnapshot(state, referenceDate = new Date()) {
+  const cushion = normalizeFinancialCushion(state.financialCushion);
+  const availableFunds = calculateAvailableFunds(state);
+  const targetAmount = calculateCushionAmount(state, referenceDate);
+  const myReserve = availableFunds - targetAmount;
+  const currentCoverage = Math.min(availableFunds, targetAmount);
+  const achievementPercent = targetAmount > 0
+    ? Math.min(100, (availableFunds / targetAmount) * 100)
+    : (cushion.enabled ? 100 : 0);
+  const remainderToGoal = Math.max(0, targetAmount - availableFunds);
+  const periodIncomesTotal = calculateCurrentPeriodIncomesTotal(state, referenceDate);
+
+  return {
+    cushion,
+    availableFunds,
+    targetAmount,
+    currentCoverage,
+    achievementPercent,
+    remainderToGoal,
+    myReserve,
+    periodIncomesTotal,
+  };
+}
+
+/**
+ * Определяет группу финансового настроения.
+ */
+export function determineFinancialMoodGroup(state, referenceDate = new Date()) {
+  const snapshot = calculateFinancialReserveSnapshot(state, referenceDate);
+
+  if (!snapshot.cushion.enabled) {
+    return snapshot.availableFunds > 0 ? MOOD_GROUPS.NEUTRAL : MOOD_GROUPS.NEUTRAL;
+  }
+
+  if (snapshot.myReserve < 0) {
+    return MOOD_GROUPS.NEGATIVE;
+  }
+
+  if (snapshot.achievementPercent >= 100 && snapshot.myReserve >= 0) {
+    return MOOD_GROUPS.POSITIVE;
+  }
+
+  if (snapshot.remainderToGoal > 0 || snapshot.myReserve < snapshot.targetAmount * 0.2) {
+    return MOOD_GROUPS.WARNING;
+  }
+
+  return MOOD_GROUPS.NEUTRAL;
+}
+
+/**
+ * Выбирает фразу финансового настроения из настроек пользователя.
+ */
+export function pickFinancialMoodPhrase(state, referenceDate = new Date()) {
+  const group = determineFinancialMoodGroup(state, referenceDate);
+  const phrases = state.settings?.moodPhrases?.[group] ?? [];
+
+  if (!Array.isArray(phrases) || phrases.length === 0) {
+    return null;
+  }
+
+  const available = phrases
+    .map((phrase) => String(phrase ?? '').trim())
+    .filter(Boolean);
+
+  if (available.length === 0) {
+    return null;
+  }
+
+  const index = Math.floor(Math.random() * available.length);
+  return available[index];
+}
+
 /**
  * Шаблон ежемесячного снимка (раздел 14 ТЗ).
  */
@@ -1865,7 +2141,7 @@ export function normalizeAppState(rawState) {
       createdAt: migrated.meta?.createdAt ?? defaults.meta.createdAt,
     },
     settings: deepMerge(defaults.settings, migrated.settings),
-    financialCushion: deepMerge(defaults.financialCushion, migrated.financialCushion),
+    financialCushion: normalizeFinancialCushion(deepMerge(defaults.financialCushion, migrated.financialCushion)),
     references: mergeReferences(defaults.references, migrated.references),
     currentBudget: deepMerge(defaults.currentBudget, migrated.currentBudget),
     templates: normalizeTemplates(migrated.templates),

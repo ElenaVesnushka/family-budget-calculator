@@ -1,0 +1,137 @@
+/**
+ * Стили раздела «Финансовая подушка».
+ */
+
+.cushion {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.cushion-overview {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+}
+
+.cushion-overview__card {
+  padding: var(--space-5);
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.cushion-overview__card--primary {
+  border-color: var(--color-accent);
+}
+
+.cushion-overview__card--muted {
+  background-color: var(--color-bg-subtle);
+}
+
+.cushion-overview__label {
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.cushion-overview__value {
+  margin: 0;
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-semibold);
+}
+
+.cushion-overview__hint {
+  margin: var(--space-2) 0 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.cushion-metric--negative {
+  color: var(--color-expense);
+}
+
+.cushion-metric--positive {
+  color: var(--color-income);
+}
+
+.cushion-progress {
+  margin-top: var(--space-4);
+}
+
+.cushion-progress__header {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+  font-size: var(--font-size-sm);
+}
+
+.cushion-progress__bar {
+  height: 0.625rem;
+  background-color: var(--color-bg-subtle);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.cushion-progress__fill {
+  display: block;
+  height: 100%;
+  background-color: var(--color-accent);
+  border-radius: var(--radius-full);
+  transition: width var(--transition-normal);
+}
+
+.cushion-progress__remainder {
+  margin: var(--space-2) 0 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.cushion-settings {
+  padding: var(--space-5);
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.cushion-settings__title {
+  margin: 0 0 var(--space-4);
+  font-size: var(--font-size-lg);
+}
+
+.cushion-settings__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.cushion-settings__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+
+@media (min-width: 48rem) {
+  .cushion-overview {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cushion-overview__card--primary {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 64rem) {
+  .cushion-overview {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .cushion-overview__card--primary {
+    grid-column: auto;
+  }
+}
