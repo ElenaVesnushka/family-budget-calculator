@@ -304,7 +304,7 @@ function createLimitForm(limit = null) {
     </div>
     <div class="form-actions">
       <button type="button" class="btn btn--secondary" data-action="cancel-limit">Отмена</button>
-      <button type="submit" class="btn btn--primary">${isEdit ? 'Сохранить' : 'Добавить'}</button>
+      <button type="submit" class="btn btn--primary">${isEdit ? 'Изменить' : 'Добавить'}</button>
     </div>
   `;
 
@@ -442,7 +442,7 @@ function handleLimitFormSubmit(form) {
     renderLimitsList();
     showNotification({
       type: 'info',
-      message: 'Лимит обновлён.',
+      message: 'Лимит изменён.',
     });
     return;
   }
@@ -466,7 +466,7 @@ function handleLimitFormSubmit(form) {
   renderLimitsList();
   showNotification({
     type: 'info',
-    message: 'Лимит сохранён.',
+    message: 'Лимит добавлен.',
   });
 }
 

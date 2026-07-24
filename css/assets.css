@@ -23,8 +23,21 @@
   box-shadow: var(--shadow-sm);
 }
 
-.assets-summary__total {
-  flex: 1 1 14rem;
+.assets-summary__metrics {
+  flex: 1 1 100%;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: var(--space-4);
+}
+
+.assets-summary__metric {
+  min-width: 0;
+}
+
+.assets-summary__metric--total {
+  padding: var(--space-3);
+  background-color: var(--color-bg-subtle);
+  border-radius: var(--radius-md);
 }
 
 .assets-summary__label {
@@ -38,6 +51,10 @@
   font-size: var(--font-size-2xl);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text);
+}
+
+.assets-summary__value--secondary {
+  font-size: var(--font-size-xl);
 }
 
 .assets-summary__meta {

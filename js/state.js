@@ -626,20 +626,31 @@ export function validateExpensePayload(payload, state) {
 }
 
 /**
- * Создаёт объект расходной операции из проверенных данных.
+ * Создаёт или обновляет объект расходной операции из проверенных данных.
  */
-export function buildExpenseFromPayload(payload, now = new Date().toISOString()) {
-  return {
-    ...createExpenseShape(),
-    id: generateId('expense'),
+export function buildExpenseFromPayload(payload, existingExpense = null, now = new Date().toISOString()) {
+  const fields = {
     categoryId: String(payload.categoryId).trim(),
     articleId: String(payload.articleId).trim(),
     name: String(payload.name ?? '').trim(),
     date: String(payload.date).trim(),
     amount: Number(payload.amount),
     comment: String(payload.comment ?? '').trim(),
-    createdAt: now,
     updatedAt: now,
+  };
+
+  if (existingExpense) {
+    return {
+      ...existingExpense,
+      ...fields,
+    };
+  }
+
+  return {
+    ...createExpenseShape(),
+    id: generateId('expense'),
+    ...fields,
+    createdAt: now,
   };
 }
 
@@ -1060,19 +1071,30 @@ export function validateIncomePayload(payload) {
 }
 
 /**
- * Создаёт объект доходной операции из проверенных данных.
+ * Создаёт или обновляет объект доходной операции из проверенных данных.
  */
-export function buildIncomeFromPayload(payload, now = new Date().toISOString()) {
-  return {
-    ...createIncomeShape(),
-    id: generateId('income'),
+export function buildIncomeFromPayload(payload, existingIncome = null, now = new Date().toISOString()) {
+  const fields = {
     incomeType: String(payload.category ?? payload.incomeType).trim(),
     name: String(payload.source ?? payload.name ?? '').trim(),
     date: String(payload.date).trim(),
     amount: Number(payload.amount),
     comment: String(payload.comment ?? '').trim(),
-    createdAt: now,
     updatedAt: now,
+  };
+
+  if (existingIncome) {
+    return {
+      ...existingIncome,
+      ...fields,
+    };
+  }
+
+  return {
+    ...createIncomeShape(),
+    id: generateId('income'),
+    ...fields,
+    createdAt: now,
   };
 }
 
@@ -1593,6 +1615,44 @@ export function buildTemplateFromIncome(income, templateName, now = new Date().t
     createdAt: now,
     updatedAt: now,
   };
+}
+
+/**
+ * Есть ли подходящий шаблон, через который можно восстановить операцию.
+ */
+export function hasRelatedTemplate(templates, templateType, nameCandidates = []) {
+  const normalizedType = normalizeTemplateType(templateType);
+  const names = new Set(
+    nameCandidates
+      .map((value) => String(value ?? '').trim().toLowerCase())
+      .filter(Boolean),
+  );
+
+  if (!normalizedType || names.size === 0) {
+    return false;
+  }
+
+  return (templates ?? []).some((template) => {
+    if (!template || template.isEnabled === false) {
+      return false;
+    }
+
+    if (normalizeTemplateType(template.templateType) !== normalizedType) {
+      return false;
+    }
+
+    const candidates = [
+      template.name,
+      template.income?.source,
+      template.expense?.name,
+      template.expectedIncome?.name,
+      template.plannedExpense?.name,
+    ]
+      .map((value) => String(value ?? '').trim().toLowerCase())
+      .filter(Boolean);
+
+    return candidates.some((candidate) => names.has(candidate));
+  });
 }
 
 /**

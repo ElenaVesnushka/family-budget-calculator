@@ -67,6 +67,12 @@
   white-space: nowrap;
 }
 
+.expenses-table__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
 .expenses-form {
   display: flex;
   flex-direction: column;
@@ -78,6 +84,11 @@
     display: block;
     overflow-x: auto;
     white-space: nowrap;
+  }
+
+  .expenses-table__actions {
+    flex-direction: column;
+    align-items: stretch;
   }
 }
 

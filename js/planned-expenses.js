@@ -10,6 +10,7 @@ import { showNotification } from './notifications.js';
 import {
   RECURRENCE_FREQUENCIES,
   EXPECTED_INCOME_RECURRENCE_ONCE,
+  TEMPLATE_TYPES,
   getExpenseCategories,
   getAvailableExpenseArticles,
   getReferenceName,
@@ -24,6 +25,7 @@ import {
   isPlannedExpenseRecurring,
   collectPlannedExpenseOccurrences,
   formatIsoDate,
+  hasRelatedTemplate,
 } from './state.js';
 import {
   buildCalendarMonthGrid,
@@ -627,7 +629,7 @@ function createPlannedExpenseForm(plannedExpense = null) {
     </div>
     <div class="form-actions">
       <button type="button" class="btn btn--secondary" data-action="cancel-planned-expense">Отмена</button>
-      <button type="submit" class="btn btn--primary">${isEdit ? 'Сохранить' : 'Добавить'}</button>
+      <button type="submit" class="btn btn--primary">${isEdit ? 'Изменить' : 'Добавить'}</button>
     </div>
   `;
 
@@ -758,7 +760,7 @@ function handlePlannedExpenseFormSubmit(form) {
     });
 
     closeModal();
-    showNotification({ type: 'info', message: 'Плановый расход обновлён.' });
+    showNotification({ type: 'info', message: 'Плановый расход изменён.' });
     return;
   }
 
@@ -770,7 +772,7 @@ function handlePlannedExpenseFormSubmit(form) {
   });
 
   closeModal();
-  showNotification({ type: 'info', message: 'Плановый расход сохранён.' });
+  showNotification({ type: 'info', message: 'Плановый расход добавлен.' });
 }
 
 function openConfirmPlannedExpenseModal(plannedExpenseId) {
@@ -1015,6 +1017,14 @@ function handleSkipPlannedExpense(plannedExpenseId) {
 }
 
 function handleTogglePlannedExpense(plannedExpenseId) {
+  const plannedExpense = findPlannedExpense(plannedExpenseId);
+
+  if (!plannedExpense) {
+    showNotification({ type: 'info', message: 'Плановый расход не найден.' });
+    return;
+  }
+
+  const nextEnabled = !plannedExpense.isEnabled;
   const now = new Date().toISOString();
 
   updateAppState((draft) => {
@@ -1023,7 +1033,7 @@ function handleTogglePlannedExpense(plannedExpenseId) {
     if (index !== -1) {
       draft.currentBudget.plannedExpenses[index] = {
         ...draft.currentBudget.plannedExpenses[index],
-        isEnabled: !draft.currentBudget.plannedExpenses[index].isEnabled,
+        isEnabled: nextEnabled,
         updatedAt: now,
       };
     }
@@ -1031,7 +1041,10 @@ function handleTogglePlannedExpense(plannedExpenseId) {
     return draft;
   });
 
-  showNotification({ type: 'info', message: 'Статус планового расхода изменён.' });
+  showNotification({
+    type: 'info',
+    message: nextEnabled ? 'Плановый расход включён.' : 'Плановый расход отключён.',
+  });
 }
 
 function handleDeletePlannedExpense(plannedExpenseId) {
@@ -1048,6 +1061,12 @@ function handleDeletePlannedExpense(plannedExpenseId) {
     return;
   }
 
+  const canRestoreViaTemplate = hasRelatedTemplate(
+    getAppState().templates,
+    TEMPLATE_TYPES.PLANNED_EXPENSE,
+    [plannedExpense.name],
+  );
+
   updateAppState((draft) => {
     draft.currentBudget.plannedExpenses = draft.currentBudget.plannedExpenses.filter(
       (item) => item.id !== plannedExpenseId,
@@ -1055,7 +1074,12 @@ function handleDeletePlannedExpense(plannedExpenseId) {
     return draft;
   });
 
-  showNotification({ type: 'info', message: 'Плановый расход удалён.' });
+  showNotification({
+    type: 'info',
+    message: canRestoreViaTemplate
+      ? 'Плановый расход удалён. Запись можно восстановить через раздел «Шаблоны».'
+      : 'Плановый расход удалён.',
+  });
 }
 
 function findPlannedExpense(plannedExpenseId) {

@@ -1,6 +1,6 @@
 /**
  * Модуль раздела «Доходы».
- * Отображение списка и добавление записей через состояние приложения.
+ * Отображение списка, добавление, изменение, удаление и копирование записей.
  */
 
 import { getSectionRegion } from './ui.js';
@@ -10,9 +10,11 @@ import { showNotification } from './notifications.js';
 import { offerCreateTemplateFromIncome } from './template-prompt.js';
 import {
   INCOME_TYPES,
+  TEMPLATE_TYPES,
   validateIncomePayload,
   buildIncomeFromPayload,
   formatIsoDate,
+  hasRelatedTemplate,
 } from './state.js';
 
 const INCOME_TYPE_OPTIONS = [
@@ -126,27 +128,37 @@ function createIncomesShell() {
 }
 
 /**
- * Обработчик клика по кнопке «Добавить доход».
+ * Обработчик действий списка доходов.
  */
-function handleAddIncomeClick(event) {
+function handleIncomesClick(event) {
   const addButton = event.target.closest('[data-action="add-income"]');
 
-  if (!addButton) {
+  if (addButton) {
+    initIncomes();
+    openAddIncomeModal();
+    event.preventDefault();
     return;
   }
 
-  initIncomes();
+  const editButton = event.target.closest('[data-action="edit-income"]');
 
-  const dialog = openAddIncomeModal();
-
-  if (!dialog) {
+  if (editButton?.dataset.incomeId) {
+    initIncomes();
+    openEditIncomeModal(editButton.dataset.incomeId);
+    event.preventDefault();
     return;
   }
 
-  event.preventDefault();
+  const deleteButton = event.target.closest('[data-action="delete-income"]');
+
+  if (deleteButton?.dataset.incomeId) {
+    initIncomes();
+    handleDeleteIncome(deleteButton.dataset.incomeId);
+    event.preventDefault();
+  }
 }
 
-document.addEventListener('click', handleAddIncomeClick);
+document.addEventListener('click', handleIncomesClick);
 
 function createIncomesLayout() {
   const container = document.createElement('div');
@@ -162,6 +174,10 @@ function createIncomesLayout() {
   `;
 
   return container;
+}
+
+function findIncome(incomeId) {
+  return getAppState().currentBudget.incomes.find((item) => item.id === incomeId) ?? null;
 }
 
 function renderIncomesList() {
@@ -202,6 +218,7 @@ function renderIncomesList() {
         <th scope="col">Категория</th>
         <th scope="col">Источник</th>
         <th scope="col">Комментарий</th>
+        <th scope="col">Действия</th>
       </tr>
     </thead>
   `;
@@ -226,6 +243,14 @@ function createIncomeRow(income) {
     <td>${escapeHtml(getIncomeTypeLabel(income.incomeType))}</td>
     <td>${escapeHtml(income.name || '—')}</td>
     <td>${escapeHtml(income.comment || '—')}</td>
+    <td class="incomes-table__actions">
+      <button type="button" class="btn btn--secondary" data-action="edit-income" data-income-id="${escapeHtml(income.id)}">
+        Изменить
+      </button>
+      <button type="button" class="btn btn--secondary" data-action="delete-income" data-income-id="${escapeHtml(income.id)}">
+        Удалить
+      </button>
+    </td>
   `;
 
   return row;
@@ -243,17 +268,44 @@ export function openAddIncomeModal(initialValues = {}) {
     return null;
   }
 
-  const dateInput = form.querySelector('[name="date"]');
-  dateInput?.focus();
-
+  form.querySelector('[name="date"]')?.focus();
   return dialog;
 }
 
-function openAddIncomeModalLegacy() {
-  return openAddIncomeModal();
+function openEditIncomeModal(incomeId) {
+  const income = findIncome(incomeId);
+
+  if (!income) {
+    showNotification({
+      type: 'info',
+      message: 'Доход не найден.',
+    });
+    return null;
+  }
+
+  const form = createIncomeForm({
+    date: income.date,
+    amount: income.amount,
+    category: income.incomeType,
+    source: income.name,
+    comment: income.comment,
+  }, income);
+
+  const dialog = openModal({
+    title: 'Изменить доход',
+    content: form,
+  });
+
+  if (!dialog) {
+    return null;
+  }
+
+  form.querySelector('[name="date"]')?.focus();
+  return dialog;
 }
 
-function createIncomeForm(initialValues = {}) {
+function createIncomeForm(initialValues = {}, income = null) {
+  const isEdit = Boolean(income?.id);
   const form = document.createElement('form');
   form.className = 'incomes-form';
   form.noValidate = true;
@@ -291,12 +343,15 @@ function createIncomeForm(initialValues = {}) {
     </div>
     <div class="form-actions">
       <button type="button" class="btn btn--secondary" data-action="cancel-income">Отмена</button>
-      <button type="submit" class="btn btn--primary">Сохранить</button>
+      <button type="submit" class="btn btn--primary">${isEdit ? 'Изменить' : 'Добавить'}</button>
     </div>
   `;
 
-  const dateInput = form.querySelector('[name="date"]');
-  dateInput.value = initialValues.date ?? formatIsoDate(new Date());
+  if (isEdit) {
+    form.dataset.incomeId = income.id;
+  }
+
+  form.querySelector('[name="date"]').value = initialValues.date ?? formatIsoDate(new Date());
 
   if (initialValues.amount != null && initialValues.amount !== '') {
     form.querySelector('[name="amount"]').value = String(initialValues.amount);
@@ -337,11 +392,45 @@ function handleIncomeFormSubmit(form) {
     source: String(formData.get('source') ?? '').trim(),
     comment: String(formData.get('comment') ?? '').trim(),
   };
-
+  const incomeId = form.dataset.incomeId ?? null;
   const errors = validateIncomePayload(payload);
 
   if (Object.keys(errors).length > 0) {
     showFormErrors(form, errors);
+    return;
+  }
+
+  if (incomeId) {
+    const existing = findIncome(incomeId);
+
+    if (!existing) {
+      showNotification({
+        type: 'info',
+        message: 'Доход не найден.',
+      });
+      return;
+    }
+
+    updateAppState((state) => {
+      const index = state.currentBudget.incomes.findIndex((item) => item.id === incomeId);
+
+      if (index === -1) {
+        return state;
+      }
+
+      state.currentBudget.incomes[index] = buildIncomeFromPayload(
+        payload,
+        state.currentBudget.incomes[index],
+      );
+
+      return state;
+    });
+
+    closeModal();
+    showNotification({
+      type: 'info',
+      message: 'Доход изменён.',
+    });
     return;
   }
 
@@ -353,12 +442,48 @@ function handleIncomeFormSubmit(form) {
   });
 
   closeModal();
-  renderIncomesList();
   showNotification({
     type: 'info',
-    message: 'Доход сохранён.',
+    message: 'Доход добавлен.',
   });
   offerCreateTemplateFromIncome(income);
+}
+
+function handleDeleteIncome(incomeId) {
+  const income = findIncome(incomeId);
+
+  if (!income) {
+    showNotification({
+      type: 'info',
+      message: 'Доход не найден.',
+    });
+    return;
+  }
+
+  const label = income.name ? `«${income.name}»` : formatAmount(income.amount);
+  const confirmed = window.confirm(`Удалить доход ${label}?`);
+
+  if (!confirmed) {
+    return;
+  }
+
+  const canRestoreViaTemplate = hasRelatedTemplate(
+    getAppState().templates,
+    TEMPLATE_TYPES.ACTUAL_INCOME,
+    [income.name],
+  );
+
+  updateAppState((state) => {
+    state.currentBudget.incomes = state.currentBudget.incomes.filter((item) => item.id !== incomeId);
+    return state;
+  });
+
+  showNotification({
+    type: 'info',
+    message: canRestoreViaTemplate
+      ? 'Доход удалён. Запись можно восстановить через раздел «Шаблоны».'
+      : 'Доход удалён.',
+  });
 }
 
 function clearFormErrors(form) {
@@ -411,10 +536,6 @@ function formatDisplayDate(dateString) {
   const year = date.getFullYear();
 
   return `${day}.${month}.${year}`;
-}
-
-function formatInputDate(date) {
-  return formatIsoDate(date);
 }
 
 function formatAmount(amount) {

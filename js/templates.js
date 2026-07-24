@@ -367,7 +367,7 @@ function createTemplateForm(template = null) {
     </div>
     <div class="form-actions">
       <button type="button" class="btn btn--secondary" data-action="cancel-template">Отмена</button>
-      <button type="submit" class="btn btn--primary">${isEdit ? 'Сохранить' : 'Добавить'}</button>
+      <button type="submit" class="btn btn--primary">${isEdit ? 'Изменить' : 'Добавить'}</button>
     </div>
   `;
 
@@ -701,7 +701,7 @@ function handleTemplateFormSubmit(form) {
     });
 
     closeModal();
-    showNotification({ type: 'info', message: 'Шаблон обновлён.' });
+    showNotification({ type: 'info', message: 'Шаблон изменён.' });
     return;
   }
 
@@ -713,7 +713,7 @@ function handleTemplateFormSubmit(form) {
   });
 
   closeModal();
-  showNotification({ type: 'info', message: 'Шаблон сохранён.' });
+  showNotification({ type: 'info', message: 'Шаблон добавлен.' });
 }
 
 function applyTemplate(templateId) {
@@ -804,6 +804,14 @@ function applyTemplate(templateId) {
 }
 
 function handleToggleTemplate(templateId) {
+  const template = findTemplate(templateId);
+
+  if (!template) {
+    showNotification({ type: 'info', message: 'Шаблон не найден.' });
+    return;
+  }
+
+  const nextEnabled = !template.isEnabled;
   const now = new Date().toISOString();
 
   updateAppState((draft) => {
@@ -812,12 +820,17 @@ function handleToggleTemplate(templateId) {
     if (index !== -1) {
       draft.templates[index] = {
         ...draft.templates[index],
-        isEnabled: !draft.templates[index].isEnabled,
+        isEnabled: nextEnabled,
         updatedAt: now,
       };
     }
 
     return draft;
+  });
+
+  showNotification({
+    type: 'info',
+    message: nextEnabled ? 'Шаблон включён.' : 'Шаблон отключён.',
   });
 }
 

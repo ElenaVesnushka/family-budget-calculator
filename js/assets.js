@@ -166,23 +166,12 @@ function renderAssetsSummary() {
   }
 
   const state = getAppState();
-  const total = calculateTotalFunds(state);
   const totalsByPurpose = calculateAssetsTotalsByPurpose(state);
   const totalsByType = calculateAssetsTotalsByType(state);
+  const currentFunds = totalsByPurpose[ACCOUNT_PURPOSES.CURRENT] ?? 0;
+  const reserveFunds = totalsByPurpose[ACCOUNT_PURPOSES.RESERVE] ?? 0;
+  const totalFunds = totalsByPurpose.total ?? calculateTotalFunds(state);
   const activeCount = state.myAssets.accounts.filter((account) => !account.isHidden).length;
-
-  const purposeRows = ACCOUNT_PURPOSE_OPTIONS
-    .map(({ value, label }) => ({
-      label,
-      amount: totalsByPurpose[value] ?? 0,
-    }))
-    .map(({ label, amount }) => `
-      <li class="assets-summary__type-item">
-        <span class="assets-summary__type-label">${escapeHtml(label)}</span>
-        <span class="assets-summary__type-amount">${formatAmount(amount)}</span>
-      </li>
-    `)
-    .join('');
 
   const typeRows = ACCOUNT_TYPE_OPTIONS
     .map(({ value, label }) => ({ value, label, amount: totalsByType[value] ?? 0 }))
@@ -197,14 +186,21 @@ function renderAssetsSummary() {
 
   summaryRegion.innerHTML = `
     <article class="assets-summary">
-      <div class="assets-summary__total">
-        <p class="assets-summary__label">Общие средства</p>
-        <p class="assets-summary__value">${formatAmount(total)}</p>
-        <p class="assets-summary__meta">Активных средств: ${activeCount}</p>
+      <div class="assets-summary__metrics" role="group" aria-label="Итоги по назначению средств">
+        <div class="assets-summary__metric">
+          <p class="assets-summary__label">Текущие средства</p>
+          <p class="assets-summary__value assets-summary__value--secondary">${formatAmount(currentFunds)}</p>
+        </div>
+        <div class="assets-summary__metric">
+          <p class="assets-summary__label">Финансовые запасы</p>
+          <p class="assets-summary__value assets-summary__value--secondary">${formatAmount(reserveFunds)}</p>
+        </div>
+        <div class="assets-summary__metric assets-summary__metric--total">
+          <p class="assets-summary__label">Общие средства</p>
+          <p class="assets-summary__value">${formatAmount(totalFunds)}</p>
+          <p class="assets-summary__meta">Активных средств: ${activeCount}</p>
+        </div>
       </div>
-      <ul class="assets-summary__types" aria-label="Суммы по назначению средств">
-        ${purposeRows}
-      </ul>
       ${typeRows ? `
         <ul class="assets-summary__types" aria-label="Суммы по типам средств">
           ${typeRows}
@@ -377,7 +373,7 @@ function createAccountForm(account = null) {
       <p class="form-field__error" data-error-for="accountType" hidden></p>
     </div>
     <div class="form-field">
-      <label class="form-field__label" for="account-purpose">Назначение</label>
+      <label class="form-field__label" for="account-purpose">Назначение средства</label>
       <select class="form-field__input" id="account-purpose" name="purpose" required>
         ${ACCOUNT_PURPOSE_OPTIONS.map(({ value, label }) => `
           <option value="${escapeHtml(value)}">${escapeHtml(label)}</option>
@@ -396,7 +392,7 @@ function createAccountForm(account = null) {
     </div>
     <div class="form-actions">
       <button type="button" class="btn btn--secondary" data-action="cancel-account">Отмена</button>
-      <button type="submit" class="btn btn--primary">${isEdit ? 'Сохранить' : 'Добавить'}</button>
+      <button type="submit" class="btn btn--primary">${isEdit ? 'Изменить' : 'Добавить'}</button>
     </div>
   `;
 
@@ -461,7 +457,7 @@ function handleAccountFormSubmit(form) {
     closeModal();
     showNotification({
       type: 'info',
-      message: 'Средство обновлено.',
+      message: 'Средство изменено.',
     });
     return;
   }

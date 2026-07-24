@@ -126,10 +126,7 @@ function renderMyAssetsContent() {
   return `
     <div class="dashboard-metric">
       <p class="dashboard-metric__value">${formatAmount(snapshot.totalFunds)}</p>
-      <p class="dashboard-metric__hint">
-        Текущие: ${formatAmount(snapshot.currentFunds)} · Запасы: ${formatAmount(snapshot.reserveFunds)}
-      </p>
-      <p class="dashboard-metric__sub">Объём активов · не влияет на оценку состояния</p>
+      <p class="dashboard-metric__hint">Общие средства</p>
     </div>
   `;
 }

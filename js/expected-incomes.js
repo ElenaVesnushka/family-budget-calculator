@@ -6,10 +6,12 @@
 import { getSectionRegion } from './ui.js';
 import { getAppState, updateAppState, isStateInitialized } from './state-service.js';
 import { openModal, closeModal } from './modals.js';
+import { showNotification } from './notifications.js';
 import {
   INCOME_TYPES,
   RECURRENCE_FREQUENCIES,
   EXPECTED_INCOME_RECURRENCE_ONCE,
+  TEMPLATE_TYPES,
   getRecurrenceLabel,
   validateExpectedIncomePayload,
   buildExpectedIncomeFromPayload,
@@ -21,6 +23,7 @@ import {
   isExpectedIncomeRecurring,
   collectExpectedIncomeOccurrences,
   formatIsoDate,
+  hasRelatedTemplate,
 } from './state.js';
 import {
   buildCalendarMonthGrid,
@@ -612,7 +615,7 @@ function createExpectedIncomeForm(expectedIncome = null) {
     </div>
     <div class="form-actions">
       <button type="button" class="btn btn--secondary" data-action="cancel-expected-income">Отмена</button>
-      <button type="submit" class="btn btn--primary">${isEdit ? 'Сохранить' : 'Добавить'}</button>
+      <button type="submit" class="btn btn--primary">${isEdit ? 'Изменить' : 'Добавить'}</button>
     </div>
   `;
 
@@ -739,6 +742,7 @@ function handleExpectedIncomeFormSubmit(form) {
     });
 
     closeModal();
+    showNotification({ type: 'info', message: 'Ожидаемый доход изменён.' });
     return;
   }
 
@@ -750,6 +754,7 @@ function handleExpectedIncomeFormSubmit(form) {
   });
 
   closeModal();
+  showNotification({ type: 'info', message: 'Ожидаемый доход добавлен.' });
 }
 
 function openConfirmExpectedIncomeModal(expectedIncomeId) {
@@ -984,6 +989,14 @@ function handleSkipExpectedIncome(expectedIncomeId) {
 }
 
 function handleToggleExpectedIncome(expectedIncomeId) {
+  const expectedIncome = findExpectedIncome(expectedIncomeId);
+
+  if (!expectedIncome) {
+    showNotification({ type: 'info', message: 'Ожидаемый доход не найден.' });
+    return;
+  }
+
+  const nextEnabled = !expectedIncome.isEnabled;
   const now = new Date().toISOString();
 
   updateAppState((draft) => {
@@ -992,12 +1005,17 @@ function handleToggleExpectedIncome(expectedIncomeId) {
     if (index !== -1) {
       draft.currentBudget.expectedIncomes[index] = {
         ...draft.currentBudget.expectedIncomes[index],
-        isEnabled: !draft.currentBudget.expectedIncomes[index].isEnabled,
+        isEnabled: nextEnabled,
         updatedAt: now,
       };
     }
 
     return draft;
+  });
+
+  showNotification({
+    type: 'info',
+    message: nextEnabled ? 'Ожидаемый доход включён.' : 'Ожидаемый доход отключён.',
   });
 }
 
@@ -1005,6 +1023,7 @@ function handleDeleteExpectedIncome(expectedIncomeId) {
   const expectedIncome = findExpectedIncome(expectedIncomeId);
 
   if (!expectedIncome) {
+    showNotification({ type: 'info', message: 'Ожидаемый доход не найден.' });
     return;
   }
 
@@ -1014,11 +1033,24 @@ function handleDeleteExpectedIncome(expectedIncomeId) {
     return;
   }
 
+  const canRestoreViaTemplate = hasRelatedTemplate(
+    getAppState().templates,
+    TEMPLATE_TYPES.EXPECTED_INCOME,
+    [expectedIncome.name],
+  );
+
   updateAppState((draft) => {
     draft.currentBudget.expectedIncomes = draft.currentBudget.expectedIncomes.filter(
       (item) => item.id !== expectedIncomeId,
     );
     return draft;
+  });
+
+  showNotification({
+    type: 'info',
+    message: canRestoreViaTemplate
+      ? 'Ожидаемый доход удалён. Запись можно восстановить через раздел «Шаблоны».'
+      : 'Ожидаемый доход удалён.',
   });
 }
 

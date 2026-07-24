@@ -1,6 +1,7 @@
 /**
  * Модуль раздела «Расходы».
  * Категории и статьи берутся из справочников состояния приложения (раздел 8 ТЗ).
+ * Поддерживаются добавление, изменение, удаление и копирование операций.
  */
 
 import { getSectionRegion } from './ui.js';
@@ -15,6 +16,8 @@ import {
   validateExpensePayload,
   buildExpenseFromPayload,
   formatIsoDate,
+  TEMPLATE_TYPES,
+  hasRelatedTemplate,
 } from './state.js';
 
 const EXPENSES_WORKSPACE_ID = 'expenses-workspace';
@@ -123,25 +126,35 @@ function createExpensesShell() {
   return shell;
 }
 
-function handleAddExpenseClick(event) {
+function handleExpensesClick(event) {
   const addButton = event.target.closest('[data-action="add-expense"]');
 
-  if (!addButton) {
+  if (addButton) {
+    initExpenses();
+    openAddExpenseModal();
+    event.preventDefault();
     return;
   }
 
-  initExpenses();
+  const editButton = event.target.closest('[data-action="edit-expense"]');
 
-  const dialog = openAddExpenseModal();
-
-  if (!dialog) {
+  if (editButton?.dataset.expenseId) {
+    initExpenses();
+    openEditExpenseModal(editButton.dataset.expenseId);
+    event.preventDefault();
     return;
   }
 
-  event.preventDefault();
+  const deleteButton = event.target.closest('[data-action="delete-expense"]');
+
+  if (deleteButton?.dataset.expenseId) {
+    initExpenses();
+    handleDeleteExpense(deleteButton.dataset.expenseId);
+    event.preventDefault();
+  }
 }
 
-document.addEventListener('click', handleAddExpenseClick);
+document.addEventListener('click', handleExpensesClick);
 
 function createExpensesLayout() {
   const container = document.createElement('div');
@@ -157,6 +170,10 @@ function createExpensesLayout() {
   `;
 
   return container;
+}
+
+function findExpense(expenseId) {
+  return getAppState().currentBudget.expenses.find((item) => item.id === expenseId) ?? null;
 }
 
 function renderExpensesList() {
@@ -196,6 +213,7 @@ function renderExpensesList() {
         <th scope="col">Статья</th>
         <th scope="col">Название</th>
         <th scope="col">Комментарий</th>
+        <th scope="col">Действия</th>
       </tr>
     </thead>
   `;
@@ -221,6 +239,14 @@ function createExpenseRow(expense, categories, articles) {
     <td>${escapeHtml(getReferenceName(articles, expense.articleId))}</td>
     <td>${escapeHtml(expense.name || '—')}</td>
     <td>${escapeHtml(expense.comment || '—')}</td>
+    <td class="expenses-table__actions">
+      <button type="button" class="btn btn--secondary" data-action="edit-expense" data-expense-id="${escapeHtml(expense.id)}">
+        Изменить
+      </button>
+      <button type="button" class="btn btn--secondary" data-action="delete-expense" data-expense-id="${escapeHtml(expense.id)}">
+        Удалить
+      </button>
+    </td>
   `;
 
   return row;
@@ -239,7 +265,39 @@ export function openAddExpenseModal(initialValues = {}) {
   }
 
   form.querySelector('[name="categoryId"]')?.focus();
+  return dialog;
+}
 
+function openEditExpenseModal(expenseId) {
+  const expense = findExpense(expenseId);
+
+  if (!expense) {
+    showNotification({
+      type: 'info',
+      message: 'Расход не найден.',
+    });
+    return null;
+  }
+
+  const form = createExpenseForm({
+    date: expense.date,
+    amount: expense.amount,
+    categoryId: expense.categoryId,
+    articleId: expense.articleId,
+    name: expense.name,
+    comment: expense.comment,
+  }, expense);
+
+  const dialog = openModal({
+    title: 'Изменить расход',
+    content: form,
+  });
+
+  if (!dialog) {
+    return null;
+  }
+
+  form.querySelector('[name="categoryId"]')?.focus();
   return dialog;
 }
 
@@ -254,8 +312,9 @@ function renderSelectOptions(items, placeholder, selectedValue = '') {
   return options.join('');
 }
 
-function createExpenseForm(initialValues = {}) {
+function createExpenseForm(initialValues = {}, expense = null) {
   const { categories, articles } = getExpenseReferences();
+  const isEdit = Boolean(expense?.id);
   const form = document.createElement('form');
   form.className = 'expenses-form';
   form.noValidate = true;
@@ -297,9 +356,13 @@ function createExpenseForm(initialValues = {}) {
     </div>
     <div class="form-actions">
       <button type="button" class="btn btn--secondary" data-action="cancel-expense">Отмена</button>
-      <button type="submit" class="btn btn--primary">Сохранить</button>
+      <button type="submit" class="btn btn--primary">${isEdit ? 'Изменить' : 'Добавить'}</button>
     </div>
   `;
+
+  if (isEdit) {
+    form.dataset.expenseId = expense.id;
+  }
 
   form.querySelector('[name="date"]').value = initialValues.date ?? formatIsoDate(new Date());
 
@@ -339,11 +402,45 @@ function handleExpenseFormSubmit(form) {
     amount: String(formData.get('amount') ?? '').trim(),
     comment: String(formData.get('comment') ?? '').trim(),
   };
-
+  const expenseId = form.dataset.expenseId ?? null;
   const errors = validateExpensePayload(payload, getAppState());
 
   if (Object.keys(errors).length > 0) {
     showFormErrors(form, errors);
+    return;
+  }
+
+  if (expenseId) {
+    const existing = findExpense(expenseId);
+
+    if (!existing) {
+      showNotification({
+        type: 'info',
+        message: 'Расход не найден.',
+      });
+      return;
+    }
+
+    updateAppState((state) => {
+      const index = state.currentBudget.expenses.findIndex((item) => item.id === expenseId);
+
+      if (index === -1) {
+        return state;
+      }
+
+      state.currentBudget.expenses[index] = buildExpenseFromPayload(
+        payload,
+        state.currentBudget.expenses[index],
+      );
+
+      return state;
+    });
+
+    closeModal();
+    showNotification({
+      type: 'info',
+      message: 'Расход изменён.',
+    });
     return;
   }
 
@@ -355,12 +452,48 @@ function handleExpenseFormSubmit(form) {
   });
 
   closeModal();
-  renderExpensesList();
   showNotification({
     type: 'info',
-    message: 'Расход сохранён.',
+    message: 'Расход добавлен.',
   });
   offerCreateTemplateFromExpense(expense);
+}
+
+function handleDeleteExpense(expenseId) {
+  const expense = findExpense(expenseId);
+
+  if (!expense) {
+    showNotification({
+      type: 'info',
+      message: 'Расход не найден.',
+    });
+    return;
+  }
+
+  const label = expense.name ? `«${expense.name}»` : formatAmount(expense.amount);
+  const confirmed = window.confirm(`Удалить расход ${label}?`);
+
+  if (!confirmed) {
+    return;
+  }
+
+  const canRestoreViaTemplate = hasRelatedTemplate(
+    getAppState().templates,
+    TEMPLATE_TYPES.ACTUAL_EXPENSE,
+    [expense.name],
+  );
+
+  updateAppState((state) => {
+    state.currentBudget.expenses = state.currentBudget.expenses.filter((item) => item.id !== expenseId);
+    return state;
+  });
+
+  showNotification({
+    type: 'info',
+    message: canRestoreViaTemplate
+      ? 'Расход удалён. Запись можно восстановить через раздел «Шаблоны».'
+      : 'Расход удалён.',
+  });
 }
 
 function clearFormErrors(form) {
@@ -408,10 +541,6 @@ function formatDisplayDate(dateString) {
   const year = date.getFullYear();
 
   return `${day}.${month}.${year}`;
-}
-
-function formatInputDate(date) {
-  return formatIsoDate(date);
 }
 
 function formatAmount(amount) {
