@@ -8,16 +8,18 @@ import { getAppState, updateAppState, isStateInitialized } from './state-service
 import { openModal, closeModal } from './modals.js';
 import { showNotification } from './notifications.js';
 import {
-  generateId,
-  createExpenseShape,
   getExpenseCategories,
   getAvailableExpenseArticles,
   getReferenceName,
+  validateExpensePayload,
+  buildExpenseFromPayload,
+  formatIsoDate,
 } from './state.js';
 
 const EXPENSES_WORKSPACE_ID = 'expenses-workspace';
 
 let workspace = null;
+let stateUpdateListenerAttached = false;
 
 function getExpensesWorkspace() {
   return document.getElementById(EXPENSES_WORKSPACE_ID) ?? getSectionRegion('expenses');
@@ -44,13 +46,80 @@ export function initExpenses() {
 
   workspace.classList.add('app-section__workspace--active');
 
-  if (!workspace.querySelector('.expenses')) {
-    workspace.replaceChildren(createExpensesLayout());
+  if (!workspace.querySelector('.expenses-shell')) {
+    workspace.replaceChildren(createExpensesShell());
   }
 
   if (isStateInitialized()) {
     renderExpensesList();
   }
+
+  attachStateUpdateListener();
+}
+
+function attachStateUpdateListener() {
+  if (stateUpdateListenerAttached) {
+    return;
+  }
+
+  document.addEventListener('appstate:updated', () => {
+    if (workspace && isStateInitialized()) {
+      renderExpensesList();
+    }
+  });
+
+  stateUpdateListenerAttached = true;
+}
+
+function createExpensesShell() {
+  const shell = document.createElement('div');
+  shell.className = 'expenses-shell';
+
+  shell.innerHTML = `
+    <div class="expenses-tabs" role="tablist" aria-label="Виды расходов">
+      <button
+        type="button"
+        class="expenses-tabs__button expenses-tabs__button--active"
+        role="tab"
+        id="expenses-tab-actual"
+        aria-selected="true"
+        aria-controls="expenses-panel-actual"
+        data-expenses-tab="actual"
+      >
+        Фактические
+      </button>
+      <button
+        type="button"
+        class="expenses-tabs__button"
+        role="tab"
+        id="expenses-tab-planned"
+        aria-selected="false"
+        aria-controls="expenses-panel-planned"
+        data-expenses-tab="planned"
+      >
+        Плановые
+      </button>
+    </div>
+    <div
+      class="expenses-panel"
+      id="expenses-panel-actual"
+      data-expenses-panel="actual"
+      role="tabpanel"
+      aria-labelledby="expenses-tab-actual"
+    ></div>
+    <div
+      class="expenses-panel"
+      id="expenses-panel-planned"
+      data-expenses-panel="planned"
+      role="tabpanel"
+      aria-labelledby="expenses-tab-planned"
+      hidden
+    ></div>
+  `;
+
+  shell.querySelector('[data-expenses-panel="actual"]').append(createExpensesLayout());
+
+  return shell;
 }
 
 function handleAddExpenseClick(event) {
@@ -230,7 +299,7 @@ function createExpenseForm() {
     </div>
   `;
 
-  form.querySelector('[name="date"]').value = formatInputDate(new Date());
+  form.querySelector('[name="date"]').value = formatIsoDate(new Date());
 
   form.addEventListener('submit', (event) => {
     event.preventDefault();
@@ -257,26 +326,14 @@ function handleExpenseFormSubmit(form) {
     comment: String(formData.get('comment') ?? '').trim(),
   };
 
-  const errors = validateExpenseForm(payload);
+  const errors = validateExpensePayload(payload, getAppState());
 
   if (Object.keys(errors).length > 0) {
     showFormErrors(form, errors);
     return;
   }
 
-  const now = new Date().toISOString();
-  const expense = {
-    ...createExpenseShape(),
-    id: generateId('expense'),
-    categoryId: payload.categoryId,
-    articleId: payload.articleId,
-    name: payload.name,
-    date: payload.date,
-    amount: Number(payload.amount),
-    comment: payload.comment,
-    createdAt: now,
-    updatedAt: now,
-  };
+  const expense = buildExpenseFromPayload(payload);
 
   updateAppState((state) => {
     state.currentBudget.expenses.push(expense);
@@ -289,56 +346,6 @@ function handleExpenseFormSubmit(form) {
     type: 'info',
     message: 'Расход сохранён.',
   });
-}
-
-function validateExpenseForm({ categoryId, articleId, date, amount }) {
-  const errors = {};
-  const { categories, articles } = getExpenseReferences();
-  const categoryIds = new Set(categories.map((item) => item.id));
-  const articleIds = new Set(articles.map((item) => item.id));
-
-  if (!categoryId) {
-    errors.categoryId = 'Выберите категорию.';
-  } else if (!categoryIds.has(categoryId)) {
-    errors.categoryId = 'Выберите категорию из списка.';
-  }
-
-  if (!articleId) {
-    errors.articleId = 'Выберите статью.';
-  } else if (!articleIds.has(articleId)) {
-    errors.articleId = 'Выберите статью из списка.';
-  }
-
-  if (!date) {
-    errors.date = 'Укажите дату.';
-  } else if (!isDateWithinAllowedRange(date)) {
-    errors.date = 'Дата должна быть не ранее 30 дней назад и не позднее 60 дней вперёд.';
-  }
-
-  const parsedAmount = Number(amount);
-
-  if (!amount) {
-    errors.amount = 'Укажите сумму.';
-  } else if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-    errors.amount = 'Сумма должна быть больше нуля.';
-  }
-
-  return errors;
-}
-
-function isDateWithinAllowedRange(dateString) {
-  const date = parseInputDate(dateString);
-
-  if (!date) {
-    return false;
-  }
-
-  const today = startOfDay(new Date());
-  const minDate = addDays(today, -30);
-  const maxDate = addDays(today, 60);
-  const target = startOfDay(date);
-
-  return target >= minDate && target <= maxDate;
 }
 
 function clearFormErrors(form) {
@@ -389,11 +396,7 @@ function formatDisplayDate(dateString) {
 }
 
 function formatInputDate(date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-
-  return `${year}-${month}-${day}`;
+  return formatIsoDate(date);
 }
 
 function formatAmount(amount) {
@@ -417,16 +420,6 @@ function parseInputDate(dateString) {
   }
 
   return new Date(year, month - 1, day);
-}
-
-function startOfDay(date) {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
-}
-
-function addDays(date, days) {
-  const result = new Date(date);
-  result.setDate(result.getDate() + days);
-  return result;
 }
 
 function escapeHtml(value) {

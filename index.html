@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="css/incomes.css">
   <link rel="stylesheet" href="css/expenses.css">
   <link rel="stylesheet" href="css/limits.css">
+  <link rel="stylesheet" href="css/planned-expenses.css">
 </head>
 <body>
   <div id="app" class="app">
@@ -204,13 +205,55 @@
               data-region="expenses"
               data-workspace="expenses"
             >
-              <div class="expenses">
-                <div class="expenses__toolbar">
-                  <button type="button" class="btn btn--primary" data-action="add-expense">
-                    Добавить расход
+              <div class="expenses-shell">
+                <div class="expenses-tabs" role="tablist" aria-label="Виды расходов">
+                  <button
+                    type="button"
+                    class="expenses-tabs__button expenses-tabs__button--active"
+                    role="tab"
+                    id="expenses-tab-actual"
+                    aria-selected="true"
+                    aria-controls="expenses-panel-actual"
+                    data-expenses-tab="actual"
+                  >
+                    Фактические
+                  </button>
+                  <button
+                    type="button"
+                    class="expenses-tabs__button"
+                    role="tab"
+                    id="expenses-tab-planned"
+                    aria-selected="false"
+                    aria-controls="expenses-panel-planned"
+                    data-expenses-tab="planned"
+                  >
+                    Плановые
                   </button>
                 </div>
-                <div class="expenses__list" data-expenses-list role="region" aria-label="Список расходов"></div>
+                <div
+                  class="expenses-panel"
+                  id="expenses-panel-actual"
+                  data-expenses-panel="actual"
+                  role="tabpanel"
+                  aria-labelledby="expenses-tab-actual"
+                >
+                  <div class="expenses">
+                    <div class="expenses__toolbar">
+                      <button type="button" class="btn btn--primary" data-action="add-expense">
+                        Добавить расход
+                      </button>
+                    </div>
+                    <div class="expenses__list" data-expenses-list role="region" aria-label="Список расходов"></div>
+                  </div>
+                </div>
+                <div
+                  class="expenses-panel"
+                  id="expenses-panel-planned"
+                  data-expenses-panel="planned"
+                  role="tabpanel"
+                  aria-labelledby="expenses-tab-planned"
+                  hidden
+                ></div>
               </div>
             </div>
           </div>
@@ -344,7 +387,7 @@
 
   </div>
 
-  <script type="module" src="js/app.js?v=20260724-6"></script>
+  <script type="module" src="js/app.js?v=20260724-7"></script>
   <script type="module" src="js/incomes.js"></script>
 </body>
 </html>

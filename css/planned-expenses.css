@@ -1,0 +1,158 @@
+/**
+ * Стили вкладки «Плановые расходы» и переключателя вкладок в разделе «Расходы».
+ */
+
+.expenses-shell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.expenses-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: var(--space-2);
+}
+
+.expenses-tabs__button {
+  appearance: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-weight: var(--font-weight-medium);
+  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+  transition: color var(--transition-fast), background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.expenses-tabs__button:hover {
+  color: var(--color-text);
+  background-color: var(--color-bg-subtle);
+}
+
+.expenses-tabs__button--active {
+  color: var(--color-text);
+  background-color: var(--color-bg-elevated);
+  border-color: var(--color-border);
+  border-bottom-color: var(--color-bg-elevated);
+  margin-bottom: -1px;
+}
+
+.expenses-panel {
+  min-height: 8rem;
+}
+
+.planned-expenses {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.planned-expenses__toolbar {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.planned-expenses__list {
+  min-height: 8rem;
+}
+
+.planned-expenses__empty {
+  margin: 0;
+  padding: var(--space-6);
+  text-align: center;
+  color: var(--color-text-secondary);
+  background-color: var(--color-bg-subtle);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.planned-expenses-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.planned-expenses-table thead {
+  background-color: var(--color-bg-subtle);
+}
+
+.planned-expenses-table th,
+.planned-expenses-table td {
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.planned-expenses-table th {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.planned-expenses-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.planned-expenses-table__row--due {
+  background-color: var(--color-warning-subtle);
+}
+
+.planned-expenses-table__row--disabled {
+  opacity: 0.72;
+}
+
+.planned-expenses-table__name {
+  font-weight: var(--font-weight-semibold);
+}
+
+.planned-expenses-table__amount {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-expense);
+  white-space: nowrap;
+}
+
+.planned-expenses-table__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  min-width: 12rem;
+}
+
+.planned-expenses-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.planned-expenses-form__hint {
+  margin: 0;
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-relaxed);
+}
+
+@media (max-width: 768px) {
+  .planned-expenses-table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 640px) {
+  .planned-expenses__toolbar .btn,
+  .expenses-tabs__button {
+    width: 100%;
+  }
+}

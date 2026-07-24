@@ -25,6 +25,7 @@ import { initDashboard } from './dashboard.js';
 import { initIncomes } from './incomes.js';
 import { initExpenses } from './expenses.js';
 import { initLimits } from './limits.js';
+import { initPlannedExpenses } from './planned-expenses.js';
 
 export {
   getAppState,
@@ -52,6 +53,7 @@ function bootstrap() {
 
       if (sectionId === 'expenses') {
         initExpenses();
+        initPlannedExpenses();
       }
 
       if (sectionId === 'limits') {
@@ -65,6 +67,7 @@ function bootstrap() {
   initDashboard();
   initIncomes();
   initExpenses();
+  initPlannedExpenses();
   initLimits();
 
   applyTheme(appState.settings.theme);

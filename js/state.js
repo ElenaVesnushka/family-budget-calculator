@@ -516,6 +516,272 @@ export function createPlannedExpenseShape() {
   };
 }
 
+const RECURRENCE_FREQUENCY_LABELS = {
+  [RECURRENCE_FREQUENCIES.DAILY]: 'Ежедневно',
+  [RECURRENCE_FREQUENCIES.WEEKLY]: 'Еженедельно',
+  [RECURRENCE_FREQUENCIES.MONTHLY]: 'Ежемесячно',
+  [RECURRENCE_FREQUENCIES.INTERVAL]: 'Каждые N дней',
+};
+
+/**
+ * Форматирует дату в ISO-строку YYYY-MM-DD.
+ */
+export function formatIsoDate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Проверяет допустимый диапазон даты расходной операции (раздел 8 ТЗ).
+ */
+export function isExpenseDateWithinAllowedRange(dateString, referenceDate = new Date()) {
+  const date = parseIsoDate(dateString);
+
+  if (!date) {
+    return false;
+  }
+
+  const today = startOfDay(referenceDate);
+  const minDate = addDays(today, -30);
+  const maxDate = addDays(today, 60);
+  const target = startOfDay(date);
+
+  return target >= minDate && target <= maxDate;
+}
+
+/**
+ * Валидация данных расходной операции.
+ */
+export function validateExpensePayload(payload, state) {
+  const errors = {};
+  const categories = getExpenseCategories(state);
+  const articles = getAvailableExpenseArticles(state);
+  const categoryIds = new Set(categories.map((item) => item.id));
+  const articleIds = new Set(articles.map((item) => item.id));
+  const {
+    categoryId = '',
+    articleId = '',
+    date = '',
+    amount = '',
+  } = payload;
+
+  if (!String(categoryId).trim()) {
+    errors.categoryId = 'Выберите категорию.';
+  } else if (!categoryIds.has(categoryId)) {
+    errors.categoryId = 'Выберите категорию из списка.';
+  }
+
+  if (!String(articleId).trim()) {
+    errors.articleId = 'Выберите статью.';
+  } else if (!articleIds.has(articleId)) {
+    errors.articleId = 'Выберите статью из списка.';
+  }
+
+  if (!String(date).trim()) {
+    errors.date = 'Укажите дату.';
+  } else if (!isExpenseDateWithinAllowedRange(date, new Date())) {
+    errors.date = 'Дата должна быть не ранее 30 дней назад и не позднее 60 дней вперёд.';
+  }
+
+  const parsedAmount = Number(amount);
+
+  if (!String(amount).trim()) {
+    errors.amount = 'Укажите сумму.';
+  } else if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+    errors.amount = 'Сумма должна быть больше нуля.';
+  }
+
+  return errors;
+}
+
+/**
+ * Создаёт объект расходной операции из проверенных данных.
+ */
+export function buildExpenseFromPayload(payload, now = new Date().toISOString()) {
+  return {
+    ...createExpenseShape(),
+    id: generateId('expense'),
+    categoryId: String(payload.categoryId).trim(),
+    articleId: String(payload.articleId).trim(),
+    name: String(payload.name ?? '').trim(),
+    date: String(payload.date).trim(),
+    amount: Number(payload.amount),
+    comment: String(payload.comment ?? '').trim(),
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+/**
+ * Человекочитаемая периодичность планового расхода.
+ */
+export function getRecurrenceLabel(recurrence) {
+  if (!recurrence?.frequency) {
+    return '—';
+  }
+
+  if (recurrence.frequency === RECURRENCE_FREQUENCIES.INTERVAL) {
+    const days = Number(recurrence.intervalDays);
+
+    if (Number.isFinite(days) && days > 0) {
+      return `Каждые ${days} дн.`;
+    }
+
+    return RECURRENCE_FREQUENCY_LABELS[RECURRENCE_FREQUENCIES.INTERVAL];
+  }
+
+  return RECURRENCE_FREQUENCY_LABELS[recurrence.frequency] ?? '—';
+}
+
+/**
+ * Рассчитывает следующую дату повторения планового расхода.
+ */
+export function calculateNextOccurrenceDate(fromDateString, recurrence) {
+  const date = parseIsoDate(fromDateString);
+
+  if (!date || !recurrence?.frequency) {
+    return fromDateString;
+  }
+
+  switch (recurrence.frequency) {
+    case RECURRENCE_FREQUENCIES.DAILY:
+      return formatIsoDate(addDays(date, 1));
+    case RECURRENCE_FREQUENCIES.WEEKLY:
+      return formatIsoDate(addDays(date, 7));
+    case RECURRENCE_FREQUENCIES.MONTHLY: {
+      const next = new Date(date);
+      next.setMonth(next.getMonth() + 1);
+      return formatIsoDate(next);
+    }
+    case RECURRENCE_FREQUENCIES.INTERVAL: {
+      const intervalDays = Number(recurrence.intervalDays);
+
+      if (!Number.isFinite(intervalDays) || intervalDays <= 0) {
+        return fromDateString;
+      }
+
+      return formatIsoDate(addDays(date, intervalDays));
+    }
+    default:
+      return fromDateString;
+  }
+}
+
+/**
+ * Плановый расход ожидает подтверждения (дата наступила или прошла).
+ */
+export function isPlannedExpenseDue(plannedExpense, referenceDate = new Date()) {
+  if (!plannedExpense?.isEnabled) {
+    return false;
+  }
+
+  const nextDate = parseIsoDate(plannedExpense.nextOccurrenceDate);
+
+  if (!nextDate) {
+    return false;
+  }
+
+  return startOfDay(nextDate) <= startOfDay(referenceDate);
+}
+
+/**
+ * Валидация данных планового расхода.
+ */
+export function validatePlannedExpensePayload(payload, state) {
+  const errors = {};
+  const categories = getExpenseCategories(state);
+  const articles = getAvailableExpenseArticles(state);
+  const categoryIds = new Set(categories.map((item) => item.id));
+  const articleIds = new Set(articles.map((item) => item.id));
+  const {
+    name = '',
+    categoryId = '',
+    articleId = '',
+    amount = '',
+    firstDate = '',
+    frequency = '',
+    intervalDays = '',
+  } = payload;
+
+  if (!String(name).trim()) {
+    errors.name = 'Укажите название.';
+  }
+
+  if (!String(categoryId).trim()) {
+    errors.categoryId = 'Выберите категорию.';
+  } else if (!categoryIds.has(categoryId)) {
+    errors.categoryId = 'Выберите категорию из списка.';
+  }
+
+  if (!String(articleId).trim()) {
+    errors.articleId = 'Выберите статью.';
+  } else if (!articleIds.has(articleId)) {
+    errors.articleId = 'Выберите статью из списка.';
+  }
+
+  const parsedAmount = Number(amount);
+
+  if (!String(amount).trim()) {
+    errors.amount = 'Укажите сумму.';
+  } else if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+    errors.amount = 'Сумма должна быть больше нуля.';
+  }
+
+  if (!String(firstDate).trim()) {
+    errors.firstDate = 'Укажите дату первого выполнения.';
+  } else if (!parseIsoDate(firstDate)) {
+    errors.firstDate = 'Укажите корректную дату.';
+  }
+
+  if (!frequency || !Object.values(RECURRENCE_FREQUENCIES).includes(frequency)) {
+    errors.frequency = 'Выберите периодичность.';
+  }
+
+  if (frequency === RECURRENCE_FREQUENCIES.INTERVAL) {
+    const parsedInterval = Number(intervalDays);
+
+    if (!String(intervalDays).trim()) {
+      errors.intervalDays = 'Укажите количество дней.';
+    } else if (!Number.isInteger(parsedInterval) || parsedInterval <= 0) {
+      errors.intervalDays = 'Количество дней должно быть целым числом больше нуля.';
+    }
+  }
+
+  return errors;
+}
+
+/**
+ * Создаёт объект планового расхода из проверенных данных.
+ */
+export function buildPlannedExpenseFromPayload(payload, now = new Date().toISOString()) {
+  const recurrence = {
+    frequency: payload.frequency,
+    intervalDays: payload.frequency === RECURRENCE_FREQUENCIES.INTERVAL
+      ? Number(payload.intervalDays)
+      : null,
+  };
+  const firstDate = String(payload.firstDate).trim();
+
+  return {
+    ...createPlannedExpenseShape(),
+    id: generateId('planned-expense'),
+    name: String(payload.name).trim(),
+    categoryId: String(payload.categoryId).trim(),
+    articleId: String(payload.articleId).trim(),
+    amount: Number(payload.amount),
+    firstDate,
+    nextOccurrenceDate: firstDate,
+    comment: String(payload.comment ?? '').trim(),
+    recurrence,
+    isEnabled: true,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
 /**
  * Шаблон ожидаемого дохода (раздел 11 ТЗ).
  */
