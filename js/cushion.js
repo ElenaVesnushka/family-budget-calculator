@@ -5,7 +5,7 @@
 
 import { getSectionRegion } from './ui.js';
 import { getAppState, updateAppState, isStateInitialized } from './state-service.js';
-import { showNotification, hideNotification } from './notifications.js';
+import { showNotification, hideNotification, syncNotificationsByPrefix } from './notifications.js';
 import {
   CUSHION_CALCULATION_METHODS,
   buildFinancialCushionFromPayload,
@@ -57,10 +57,6 @@ function attachStateUpdateListener() {
 }
 
 function handleStateUpdated() {
-  if (isStateInitialized()) {
-    syncReserveWarnings();
-  }
-
   if (workspace && isStateInitialized()) {
     renderCushionSection();
   }
@@ -77,37 +73,27 @@ export function syncReserveWarnings() {
   const state = getAppState();
   const snapshot = calculateFinancialReserveSnapshot(state);
   const periodBalance = snapshot.periodBalance;
+  const items = [];
 
-  hideNotification('balance-below-cushion');
-  hideNotification('balance-negative');
+  // Устаревшие предупреждения по «запасу» больше не используются.
   hideNotification('reserve-negative');
   hideNotification('reserve-decreasing');
 
-  if (!state.financialCushion?.enabled) {
-    if (periodBalance < 0) {
-      showNotification({
-        id: 'balance-negative',
-        type: 'warning',
-        message: 'Текущие доходы не покрывают текущие расходы. Возможно, стоит пересмотреть расходы или ожидаемые поступления.',
-      });
-    }
-
-    return;
-  }
-
   if (periodBalance < 0) {
-    showNotification({
+    items.push({
       id: 'balance-negative',
       type: 'warning',
       message: 'Текущие доходы не покрывают текущие расходы. Возможно, стоит пересмотреть расходы или ожидаемые поступления.',
     });
-  } else if (periodBalance < snapshot.targetAmount) {
-    showNotification({
+  } else if (state.financialCushion?.enabled && periodBalance < snapshot.targetAmount) {
+    items.push({
       id: 'balance-below-cushion',
       type: 'warning',
       message: 'Баланс периода ниже установленного безопасного уровня. Проверьте расходы и размер финансовой подушки.',
     });
   }
+
+  syncNotificationsByPrefix('balance-', items);
 }
 
 function ensureLayout() {

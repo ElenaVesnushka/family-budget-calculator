@@ -6,7 +6,7 @@
 import { getSectionRegion } from './ui.js';
 import { getAppState, updateAppState, isStateInitialized } from './state-service.js';
 import { openModal, closeModal } from './modals.js';
-import { showNotification } from './notifications.js';
+import { showNotification, syncNotificationsByPrefix } from './notifications.js';
 import {
   RECURRENCE_FREQUENCIES,
   EXPECTED_INCOME_RECURRENCE_ONCE,
@@ -37,6 +37,7 @@ import {
 } from './calendar-events.js';
 
 const EXPENSES_WORKSPACE_ID = 'expenses-workspace';
+const PLANNED_REMINDER_PREFIX = 'reminder-planned-';
 
 const RECURRENCE_OPTIONS = [
   { value: RECURRENCE_FREQUENCIES.DAILY, label: 'Ежедневно' },
@@ -342,6 +343,28 @@ function renderLocalDueReminders() {
     notice.textContent = `Запланирован расход «${item.name}». Подтвердите выполнение операции.`;
     remindersRegion.append(notice);
   });
+}
+
+/**
+ * Reminder в общей панели о плановых расходах, требующих подтверждения.
+ */
+export function syncPlannedExpenseReminders() {
+  if (!isStateInitialized()) {
+    return;
+  }
+
+  const dueItems = (getAppState().currentBudget?.plannedExpenses ?? []).filter((item) => (
+    isPlannedExpenseDue(item)
+  ));
+
+  syncNotificationsByPrefix(
+    PLANNED_REMINDER_PREFIX,
+    dueItems.map((item) => ({
+      id: `${PLANNED_REMINDER_PREFIX}${item.id}`,
+      type: 'reminder',
+      message: `Запланирован расход «${item.name}». Подтвердите выполнение операции.`,
+    })),
+  );
 }
 
 function renderPlannedExpensesList() {

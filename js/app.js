@@ -11,6 +11,7 @@ import {
   replaceAppState,
   resetAppState,
   updateSessionState,
+  isStateInitialized,
 } from './state-service.js';
 import {
   initShell,
@@ -23,15 +24,17 @@ import { initNotifications, showNotification, hideNotification, hideAllNotificat
 import { initModals, openModal, closeModal, isModalOpen } from './modals.js';
 import { initDashboard } from './dashboard.js';
 import { initIncomes } from './incomes.js';
-import { initExpectedIncomes } from './expected-incomes.js';
+import { initExpectedIncomes, syncExpectedIncomeReminders } from './expected-incomes.js';
 import { initExpenses } from './expenses.js';
-import { initLimits } from './limits.js';
-import { initPlannedExpenses } from './planned-expenses.js';
+import { initLimits, syncLimitWarnings } from './limits.js';
+import { initPlannedExpenses, syncPlannedExpenseReminders } from './planned-expenses.js';
 import { initTemplates } from './templates.js';
 import { initAssets } from './assets.js';
 import { initCushion, syncReserveWarnings } from './cushion.js';
 import { initReports } from './reports.js';
 import { initSettings } from './settings.js';
+
+let conditionalNotificationsListenerAttached = false;
 
 export {
   getAppState,
@@ -46,6 +49,33 @@ export {
   closeModal,
   isModalOpen,
 };
+
+/**
+ * Пересчитывает условные уведомления панели (раздел 17 ТЗ).
+ * Не затрагивает финансовое настроение, наблюдения и аналитику.
+ */
+function syncConditionalNotifications() {
+  if (!isStateInitialized()) {
+    return;
+  }
+
+  syncReserveWarnings();
+  syncLimitWarnings();
+  syncPlannedExpenseReminders();
+  syncExpectedIncomeReminders();
+}
+
+function attachConditionalNotificationsListener() {
+  if (conditionalNotificationsListenerAttached) {
+    return;
+  }
+
+  document.addEventListener('appstate:updated', () => {
+    syncConditionalNotifications();
+  });
+
+  conditionalNotificationsListenerAttached = true;
+}
 
 function bootstrap() {
   const appState = initStateService();
@@ -92,6 +122,7 @@ function bootstrap() {
 
   initNotifications(getNotificationsContainer());
   initModals(getModalRoot());
+  attachConditionalNotificationsListener();
   initDashboard();
   initIncomes();
   initExpectedIncomes();
@@ -103,7 +134,7 @@ function bootstrap() {
   initCushion();
   initReports();
   initSettings();
-  syncReserveWarnings();
+  syncConditionalNotifications();
 
   applyTheme(appState.settings.theme);
   showSection(appState.ui.activeSection);

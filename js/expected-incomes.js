@@ -6,7 +6,7 @@
 import { getSectionRegion } from './ui.js';
 import { getAppState, updateAppState, isStateInitialized } from './state-service.js';
 import { openModal, closeModal } from './modals.js';
-import { showNotification } from './notifications.js';
+import { showNotification, syncNotificationsByPrefix } from './notifications.js';
 import {
   INCOME_TYPES,
   RECURRENCE_FREQUENCIES,
@@ -35,6 +35,7 @@ import {
 } from './calendar-events.js';
 
 const INCOMES_WORKSPACE_ID = 'incomes-workspace';
+const EXPECTED_REMINDER_PREFIX = 'reminder-expected-';
 
 const INCOME_TYPE_OPTIONS = [
   { value: INCOME_TYPES.PERMANENT, label: 'Постоянный' },
@@ -346,6 +347,28 @@ function renderLocalDueReminders() {
     notice.textContent = `Ожидалось поступление «${item.name}». Проверьте сумму и подтвердите получение.`;
     remindersRegion.append(notice);
   });
+}
+
+/**
+ * Reminder в общей панели об ожидаемых доходах, требующих подтверждения.
+ */
+export function syncExpectedIncomeReminders() {
+  if (!isStateInitialized()) {
+    return;
+  }
+
+  const dueItems = (getAppState().currentBudget?.expectedIncomes ?? []).filter((item) => (
+    isExpectedIncomeDue(item)
+  ));
+
+  syncNotificationsByPrefix(
+    EXPECTED_REMINDER_PREFIX,
+    dueItems.map((item) => ({
+      id: `${EXPECTED_REMINDER_PREFIX}${item.id}`,
+      type: 'reminder',
+      message: `Ожидалось поступление «${item.name}». Проверьте сумму и подтвердите получение.`,
+    })),
+  );
 }
 
 function renderExpectedIncomesList() {

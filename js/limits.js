@@ -6,7 +6,7 @@
 import { getSectionRegion } from './ui.js';
 import { getAppState, updateAppState, isStateInitialized } from './state-service.js';
 import { openModal, closeModal } from './modals.js';
-import { showNotification } from './notifications.js';
+import { showNotification, syncNotificationsByPrefix } from './notifications.js';
 import {
   generateId,
   createLimitShape,
@@ -15,6 +15,8 @@ import {
   getLimitArticles,
   calculateLimitProgress,
 } from './state.js';
+
+const LIMIT_WARNING_PREFIX = 'limit-warning-';
 
 const LIMITS_WORKSPACE_ID = 'limits-workspace';
 
@@ -68,6 +70,41 @@ function handleStateUpdated() {
   }
 
   renderLimitsList();
+}
+
+/**
+ * Предупреждения по лимитам в общей панели уведомлений (раздел 9 и 17 ТЗ).
+ */
+export function syncLimitWarnings() {
+  if (!isStateInitialized()) {
+    return;
+  }
+
+  const state = getAppState();
+  const items = [];
+
+  (state.currentBudget?.limits ?? []).forEach((limit) => {
+    const progress = calculateLimitProgress(limit, state);
+
+    if (progress.status === 'exceeded') {
+      items.push({
+        id: `${LIMIT_WARNING_PREFIX}${limit.id}`,
+        type: 'warning',
+        message: `Превышен лимит «${progress.name}». Перерасход: ${formatAmount(progress.overspend)}.`,
+      });
+      return;
+    }
+
+    if (progress.status === 'warning') {
+      items.push({
+        id: `${LIMIT_WARNING_PREFIX}${limit.id}`,
+        type: 'warning',
+        message: `Лимит «${progress.name}» близок к исчерпанию (${progress.usagePercent}%).`,
+      });
+    }
+  });
+
+  syncNotificationsByPrefix(LIMIT_WARNING_PREFIX, items);
 }
 
 function handleLimitsClick(event) {
