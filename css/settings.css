@@ -138,6 +138,31 @@
   letter-spacing: 0.03em;
 }
 
+.settings-block--danger {
+  border-color: var(--color-expense);
+  background-color: var(--color-expense-subtle);
+  box-shadow: none;
+}
+
+.settings-block--danger .settings-block__title {
+  color: var(--color-expense);
+}
+
+.btn--danger {
+  color: #ffffff;
+  background-color: var(--color-expense);
+  border-color: var(--color-expense);
+}
+
+.btn--danger:hover:not(:disabled) {
+  filter: brightness(0.92);
+}
+
+.btn--danger:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .settings-confirm__message {
   margin: 0 0 var(--space-3);
   font-size: var(--font-size-sm);
@@ -148,6 +173,31 @@
   margin: 0 0 var(--space-3);
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
+}
+
+.settings-confirm__list {
+  margin: 0 0 var(--space-4);
+  padding-left: 1.25rem;
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+}
+
+.settings-confirm__list li + li {
+  margin-top: var(--space-1);
+}
+
+.settings-confirm__keyword {
+  margin: 0 0 var(--space-4);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.04em;
+  color: var(--color-expense);
+}
+
+.settings-confirm__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
 }
 
 @media (max-width: 640px) {

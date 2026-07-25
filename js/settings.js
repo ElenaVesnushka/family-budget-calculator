@@ -3,9 +3,10 @@
  */
 
 import { getSectionRegion, applyTheme } from './ui.js';
-import { getAppState, updateAppState, isStateInitialized } from './state-service.js';
+import { getAppState, updateAppState, resetAppState, isStateInitialized } from './state-service.js';
 import { openModal, closeModal } from './modals.js';
-import { showNotification } from './notifications.js?v=20260725-12';
+import { showNotification, hideAllNotifications } from './notifications.js?v=20260725-12';
+import { refreshDashboard } from './dashboard.js?v=20260725-18';
 import {
   THEMES,
   CUSHION_CALCULATION_METHODS,
@@ -26,6 +27,7 @@ import {
 } from './state.js';
 
 const WORKSPACE_ID = 'settings-workspace';
+const WIPE_CONFIRM_WORD = 'УДАЛИТЬ';
 
 const THEME_OPTIONS = [
   { value: THEMES.LIGHT, label: 'Светлая' },
@@ -101,6 +103,7 @@ function createSettingsLayout() {
     <section class="settings-block" data-settings-articles></section>
     <section class="settings-block" data-settings-phrases></section>
     <section class="settings-block" data-settings-reset></section>
+    <section class="settings-block settings-block--danger" data-settings-wipe></section>
   `;
 
   return container;
@@ -159,6 +162,13 @@ function handleSettingsClick(event) {
   if (resetButton) {
     handleResetSettings();
     event.preventDefault();
+    return;
+  }
+
+  const wipeButton = event.target.closest('[data-action="wipe-all-data"]');
+  if (wipeButton) {
+    openWipeAllDataFirstConfirm();
+    event.preventDefault();
   }
 }
 
@@ -207,6 +217,7 @@ function renderSettings() {
   renderArticles();
   renderPhrases();
   renderResetBlock();
+  renderWipeAllDataBlock();
 }
 
 function renderGeneralSettings() {
@@ -450,6 +461,156 @@ function renderResetBlock() {
     <p class="settings-block__intro">Восстанавливает параметры по умолчанию. Не удаляет операции, шаблоны, историю денежных средств и отчёты.</p>
     <button type="button" class="btn btn--secondary" data-action="reset-settings">Сбросить настройки</button>
   `;
+}
+
+function ensureWipeAllDataRegion() {
+  let region = workspace.querySelector('[data-settings-wipe]');
+
+  if (region) {
+    return region;
+  }
+
+  const settingsRoot = workspace.querySelector('.settings');
+
+  if (!settingsRoot) {
+    return null;
+  }
+
+  region = document.createElement('section');
+  region.className = 'settings-block settings-block--danger';
+  region.setAttribute('data-settings-wipe', '');
+  settingsRoot.append(region);
+
+  return region;
+}
+
+function renderWipeAllDataBlock() {
+  const region = ensureWipeAllDataRegion();
+
+  if (!region) {
+    return;
+  }
+
+  region.classList.add('settings-block--danger');
+  region.innerHTML = `
+    <h3 class="settings-block__title">🗑 Обнулить все данные</h3>
+    <p class="settings-block__intro">Полностью удаляет все данные приложения и создаёт новое пустое состояние. Это действие нельзя отменить.</p>
+    <button type="button" class="btn btn--danger" data-action="wipe-all-data">🗑 Обнулить все данные</button>
+  `;
+}
+
+function openWipeAllDataFirstConfirm() {
+  const content = document.createElement('div');
+  content.className = 'settings-confirm settings-confirm--danger';
+  content.innerHTML = `
+    <p class="settings-confirm__message">Вы действительно хотите удалить все данные приложения?</p>
+    <p class="settings-confirm__details">Будут удалены:</p>
+    <ul class="settings-confirm__list">
+      <li>доходы;</li>
+      <li>расходы;</li>
+      <li>денежные средства;</li>
+      <li>лимиты;</li>
+      <li>шаблоны;</li>
+      <li>снимки денежных средств;</li>
+      <li>пользовательские настройки;</li>
+      <li>уведомления;</li>
+      <li>история приложения.</li>
+    </ul>
+    <div class="form-actions">
+      <button type="button" class="btn btn--secondary" data-action="cancel-wipe-all">Отмена</button>
+      <button type="button" class="btn btn--danger" data-action="continue-wipe-all">Продолжить</button>
+    </div>
+  `;
+
+  content.querySelector('[data-action="cancel-wipe-all"]').addEventListener('click', () => {
+    closeModal();
+  });
+
+  content.querySelector('[data-action="continue-wipe-all"]').addEventListener('click', () => {
+    openWipeAllDataSecondConfirm();
+  });
+
+  openModal({
+    title: 'Обнуление данных',
+    content,
+  });
+}
+
+function openWipeAllDataSecondConfirm() {
+  const content = document.createElement('div');
+  content.className = 'settings-confirm settings-confirm--danger';
+  content.innerHTML = `
+    <p class="settings-confirm__message">Это действие невозможно отменить.</p>
+    <p class="settings-confirm__details">Для подтверждения введите слово:</p>
+    <p class="settings-confirm__keyword">${WIPE_CONFIRM_WORD}</p>
+    <form class="settings-confirm__form" data-wipe-confirm-form novalidate>
+      <div class="form-field">
+        <label class="form-field__label" for="wipe-confirm-input">Подтверждение</label>
+        <input
+          class="form-field__input"
+          type="text"
+          id="wipe-confirm-input"
+          name="confirmWord"
+          autocomplete="off"
+          spellcheck="false"
+          required
+        >
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn--secondary" data-action="cancel-wipe-all">Отмена</button>
+        <button type="submit" class="btn btn--danger" data-action="confirm-wipe-all" disabled>
+          🗑 Обнулить все данные
+        </button>
+      </div>
+    </form>
+  `;
+
+  const form = content.querySelector('[data-wipe-confirm-form]');
+  const input = content.querySelector('#wipe-confirm-input');
+  const confirmButton = content.querySelector('[data-action="confirm-wipe-all"]');
+
+  const syncConfirmButton = () => {
+    confirmButton.disabled = String(input.value ?? '').trim() !== WIPE_CONFIRM_WORD;
+  };
+
+  input.addEventListener('input', syncConfirmButton);
+  syncConfirmButton();
+
+  content.querySelector('[data-action="cancel-wipe-all"]').addEventListener('click', () => {
+    closeModal();
+  });
+
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+
+    if (String(input.value ?? '').trim() !== WIPE_CONFIRM_WORD) {
+      syncConfirmButton();
+      return;
+    }
+
+    executeWipeAllData();
+  });
+
+  openModal({
+    title: 'Подтверждение удаления',
+    content,
+  });
+
+  input.focus();
+}
+
+function executeWipeAllData() {
+  closeModal();
+  hideAllNotifications();
+
+  const freshState = resetAppState();
+  applyTheme(freshState.settings.theme);
+  refreshDashboard();
+
+  showNotification({
+    type: 'info',
+    message: 'Все данные приложения успешно удалены. Создано новое пустое состояние.',
+  });
 }
 
 function saveGeneralSettings(form) {

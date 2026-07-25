@@ -29,6 +29,7 @@ let stateUpdateListenerAttached = false;
 let lastMoodState = null;
 let lastMoodPhrase = null;
 let lastMoodPhrasesKey = null;
+let lastBudgetId = null;
 
 /**
  * Возвращает контейнер главного экрана.
@@ -51,8 +52,25 @@ export function initDashboard() {
   attachStateUpdateListener();
 
   if (isStateInitialized()) {
-    renderDashboard();
+    refreshDashboard();
   }
+}
+
+/**
+ * Принудительно пересчитывает и перерисовывает Главный экран из текущего state.
+ * Сбрасывает локальные кэши фраз, чтобы не показывать значения до очистки данных.
+ */
+export function refreshDashboard() {
+  lastMoodState = null;
+  lastMoodPhrase = null;
+  lastMoodPhrasesKey = null;
+  lastBudgetId = null;
+
+  if (!isStateInitialized()) {
+    return;
+  }
+
+  renderDashboard();
 }
 
 function attachStateUpdateListener() {
@@ -72,28 +90,37 @@ function attachStateUpdateListener() {
 function renderDashboard() {
   const region = getDashboardWorkspace();
 
-  if (!region) {
+  if (!region || !isStateInitialized()) {
     return;
   }
 
-  renderMood(region);
-  renderCard(region, 'period-balance', renderPeriodBalanceContent);
-  renderCard(region, 'my-assets', renderMyAssetsContent);
-  renderCard(region, 'incomes', renderIncomesContent);
-  renderCard(region, 'expenses', renderExpensesContent);
-  renderCard(region, 'cushion', renderCushionContent);
-  renderRecentOperations(region);
-  renderFinancialObservations(region);
+  const state = getAppState();
+  const budgetId = state.meta?.budgetId ?? null;
+
+  if (budgetId !== lastBudgetId) {
+    lastBudgetId = budgetId;
+    lastMoodState = null;
+    lastMoodPhrase = null;
+    lastMoodPhrasesKey = null;
+  }
+
+  renderMood(region, state);
+  renderCard(region, 'period-balance', () => renderPeriodBalanceContent(state));
+  renderCard(region, 'my-assets', () => renderMyAssetsContent(state));
+  renderCard(region, 'incomes', () => renderIncomesContent(state));
+  renderCard(region, 'expenses', () => renderExpensesContent(state));
+  renderCard(region, 'cushion', () => renderCushionContent(state));
+  renderRecentOperations(region, state);
+  renderFinancialObservations(region, state);
 }
 
-function renderMood(region) {
+function renderMood(region, state = getAppState()) {
   const moodRegion = region.querySelector('[data-dashboard-mood]');
 
   if (!moodRegion) {
     return;
   }
 
-  const state = getAppState();
   const moodState = determineFinancialMoodState(state);
   const moodPhrasesKey = JSON.stringify(state.settings?.moodPhrases ?? {});
 
@@ -111,8 +138,8 @@ function renderMood(region) {
   `;
 }
 
-function renderPeriodBalanceContent() {
-  const balance = calculatePeriodBalance(getAppState());
+function renderPeriodBalanceContent(state = getAppState()) {
+  const balance = calculatePeriodBalance(state);
   const balanceClass = balance < 0
     ? 'dashboard-metric--negative'
     : 'dashboard-metric--positive';
@@ -125,8 +152,8 @@ function renderPeriodBalanceContent() {
   `;
 }
 
-function renderMyAssetsContent() {
-  const snapshot = calculateFinancialReserveSnapshot(getAppState());
+function renderMyAssetsContent(state = getAppState()) {
+  const snapshot = calculateFinancialReserveSnapshot(state);
 
   return `
     <div class="dashboard-metric">
@@ -136,8 +163,8 @@ function renderMyAssetsContent() {
   `;
 }
 
-function renderIncomesContent() {
-  const total = calculateCurrentPeriodIncomesTotal(getAppState());
+function renderIncomesContent(state = getAppState()) {
+  const total = calculateCurrentPeriodIncomesTotal(state);
 
   return `
     <div class="dashboard-metric dashboard-metric--income">
@@ -147,8 +174,8 @@ function renderIncomesContent() {
   `;
 }
 
-function renderExpensesContent() {
-  const total = calculateCurrentPeriodExpensesTotal(getAppState());
+function renderExpensesContent(state = getAppState()) {
+  const total = calculateCurrentPeriodExpensesTotal(state);
 
   return `
     <div class="dashboard-metric dashboard-metric--expense">
@@ -158,8 +185,8 @@ function renderExpensesContent() {
   `;
 }
 
-function renderCushionContent() {
-  const snapshot = calculateFinancialReserveSnapshot(getAppState());
+function renderCushionContent(state = getAppState()) {
+  const snapshot = calculateFinancialReserveSnapshot(state);
 
   if (!snapshot.cushion.enabled) {
     return `
@@ -227,7 +254,7 @@ function collectRecentOperations(state, limit = RECENT_OPERATIONS_LIMIT) {
     .slice(0, limit);
 }
 
-function renderFinancialObservations(region) {
+function renderFinancialObservations(region, state = getAppState()) {
   const block = region.querySelector('[data-dashboard-observations]');
   const list = region.querySelector('[data-dashboard-observations-list]');
 
@@ -235,7 +262,7 @@ function renderFinancialObservations(region) {
     return;
   }
 
-  const observations = buildFinancialObservations(getAppState());
+  const observations = buildFinancialObservations(state);
 
   list.replaceChildren();
 
@@ -254,14 +281,13 @@ function renderFinancialObservations(region) {
   block.hidden = false;
 }
 
-function renderRecentOperations(region) {
+function renderRecentOperations(region, state = getAppState()) {
   const body = region.querySelector('[data-card-content="recent"]');
 
   if (!body) {
     return;
   }
 
-  const state = getAppState();
   const operations = collectRecentOperations(state);
 
   body.replaceChildren();

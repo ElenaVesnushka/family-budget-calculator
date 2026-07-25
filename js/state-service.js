@@ -105,7 +105,8 @@ export function replaceAppState(nextState) {
 }
 
 /**
- * Сбрасывает сохранённые данные и создаёт новый бюджет.
+ * Полностью очищает сохранённые данные и создаёт новый пустой бюджет.
+ * Сохраняет начальное состояние в localStorage и уведомляет интерфейс.
  */
 export function resetAppState() {
   const newBudget = resetStoredState();
@@ -116,6 +117,8 @@ export function resetAppState() {
   });
 
   isInitialized = true;
+  document.dispatchEvent(new CustomEvent('appstate:updated'));
+
   return appState;
 }
 

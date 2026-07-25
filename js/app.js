@@ -22,7 +22,7 @@ import {
 } from './ui.js';
 import { initNotifications, showNotification, hideNotification, hideAllNotifications } from './notifications.js?v=20260725-12';
 import { initModals, openModal, closeModal, isModalOpen } from './modals.js';
-import { initDashboard } from './dashboard.js';
+import { initDashboard } from './dashboard.js?v=20260725-18';
 import { initIncomes } from './incomes.js';
 import { initExpectedIncomes, syncExpectedIncomeReminders } from './expected-incomes.js';
 import { initExpenses } from './expenses.js';
@@ -32,7 +32,7 @@ import { initTemplates } from './templates.js';
 import { initAssets, syncAssetsSnapshotReminders } from './assets.js?v=20260725-16';
 import { initCushion, syncReserveWarnings } from './cushion.js';
 import { initReports } from './reports.js';
-import { initSettings } from './settings.js';
+import { initSettings } from './settings.js?v=20260725-18';
 
 let conditionalNotificationsListenerAttached = false;
 
@@ -84,6 +84,10 @@ function bootstrap() {
   initShell({
     onSectionChange(sectionId) {
       updateSessionState({ activeSection: sectionId });
+
+      if (sectionId === 'dashboard') {
+        initDashboard();
+      }
 
       if (sectionId === 'incomes') {
         initIncomes();
