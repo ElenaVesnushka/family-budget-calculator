@@ -6,18 +6,28 @@
 import { getSectionRegion } from './ui.js';
 import { getAppState, updateAppState, isStateInitialized } from './state-service.js';
 import { openModal, closeModal } from './modals.js';
-import { showNotification } from './notifications.js?v=20260725-11';
+import { showNotification, syncNotificationsByPrefix } from './notifications.js?v=20260725-12';
 import {
   ACCOUNT_PURPOSES,
   ACCOUNT_TYPES,
   buildAccountFromPayload,
+  buildAssetsSnapshotFromState,
   calculateAssetsTotalsByPurpose,
   calculateAssetsTotalsByType,
+  calculateSnapshotAmountChange,
   calculateTotalFunds,
+  findAssetsSnapshotByDate,
+  formatIsoDate,
   getAccountPurposeLabel,
   getAccountTypeLabel,
+  getPreviousAssetsSnapshot,
+  getSortedAssetsSnapshots,
+  isAssetsSnapshotReminderDue,
   validateAccountPayload,
 } from './state.js';
+
+const SNAPSHOT_REMINDER_PREFIX = 'reminder-assets-snapshot';
+const SNAPSHOT_REMINDER_ID = 'reminder-assets-snapshot-due';
 
 const WORKSPACE_ID = 'assets-workspace';
 
@@ -94,12 +104,20 @@ function createLayout() {
       <button type="button" class="btn btn--primary" data-action="add-account">
         Добавить средство
       </button>
+      <button type="button" class="btn btn--secondary" data-action="create-snapshot">
+        Сделать снимок
+      </button>
       <label class="assets__show-disabled">
         <input type="checkbox" id="assets-show-disabled" checked>
         Показывать отключённые
       </label>
     </div>
     <div class="assets__list" data-assets-list role="region" aria-label="Список средств"></div>
+    <section class="assets-snapshots" data-assets-snapshots aria-labelledby="assets-snapshots-title">
+      <h3 class="assets-snapshots__title" id="assets-snapshots-title">История ежемесячных снимков</h3>
+      <p class="assets-snapshots__hint">Снимки фиксируют состояние средств на выбранную дату и не изменяются при дальнейших правках.</p>
+      <div class="assets-snapshots__list" data-assets-snapshots-list></div>
+    </section>
   `;
 
   return container;
@@ -146,6 +164,15 @@ function handleAssetsClick(event) {
     initAssets();
     handleDeleteAccount(deleteButton.dataset.accountId);
     event.preventDefault();
+    return;
+  }
+
+  const snapshotButton = event.target.closest('[data-action="create-snapshot"]');
+
+  if (snapshotButton) {
+    initAssets();
+    openCreateSnapshotModal();
+    event.preventDefault();
   }
 }
 
@@ -156,6 +183,26 @@ function renderAssetsSection() {
   ensureLayout();
   renderAssetsSummary();
   renderAssetsList();
+  renderSnapshotsHistory();
+}
+
+/**
+ * Reminder о ежемесячном снимке средств в общей панели уведомлений.
+ */
+export function syncAssetsSnapshotReminders() {
+  if (!isStateInitialized()) {
+    return;
+  }
+
+  const items = isAssetsSnapshotReminderDue(getAppState())
+    ? [{
+      id: SNAPSHOT_REMINDER_ID,
+      type: 'reminder',
+      message: 'Пора зафиксировать ежемесячный снимок средств. Создайте снимок в разделе «Мои средства».',
+    }]
+    : [];
+
+  syncNotificationsByPrefix(SNAPSHOT_REMINDER_PREFIX, items);
 }
 
 function renderAssetsSummary() {
@@ -172,6 +219,10 @@ function renderAssetsSummary() {
   const reserveFunds = totalsByPurpose[ACCOUNT_PURPOSES.RESERVE] ?? 0;
   const totalFunds = totalsByPurpose.total ?? calculateTotalFunds(state);
   const activeCount = state.myAssets.accounts.filter((account) => !account.isHidden).length;
+  const latestSnapshot = getSortedAssetsSnapshots(state)[0] ?? null;
+  const totalChange = latestSnapshot
+    ? calculateSnapshotAmountChange(totalFunds, latestSnapshot.totalAmount)
+    : { absolute: null, percent: null };
 
   const typeRows = ACCOUNT_TYPE_OPTIONS
     .map(({ value, label }) => ({ value, label, amount: totalsByType[value] ?? 0 }))
@@ -199,6 +250,11 @@ function renderAssetsSummary() {
           <p class="assets-summary__label">Общие средства</p>
           <p class="assets-summary__value">${formatAmount(totalFunds)}</p>
           <p class="assets-summary__meta">Активных средств: ${activeCount}</p>
+          ${latestSnapshot ? `
+            <p class="assets-summary__meta">
+              К последнему снимку (${formatDisplayDate(latestSnapshot.date)}): ${formatChange(totalChange)}
+            </p>
+          ` : ''}
         </div>
       </div>
       ${typeRows ? `
@@ -255,6 +311,7 @@ function renderAssetsList() {
         <th scope="col">Тип</th>
         <th scope="col">Назначение</th>
         <th scope="col">Сумма</th>
+        <th scope="col">К снимку</th>
         <th scope="col">Статус</th>
         <th scope="col">Комментарий</th>
         <th scope="col">Действия</th>
@@ -282,12 +339,16 @@ function createAccountRow(account) {
   const statusLabel = account.isHidden ? 'Отключено' : 'Активно';
   const toggleLabel = account.isHidden ? 'Включить' : 'Отключить';
   const comment = String(account.comment ?? '').trim();
+  const latestSnapshot = getSortedAssetsSnapshots(getAppState())[0] ?? null;
+  const previousBalance = latestSnapshot?.accountBalances?.find((item) => item.accountId === account.id)?.balance;
+  const change = calculateSnapshotAmountChange(account.balance, previousBalance);
 
   row.innerHTML = `
     <td class="assets-table__name">${escapeHtml(account.name)}</td>
     <td>${escapeHtml(getAccountTypeLabel(account.accountType))}</td>
     <td>${escapeHtml(getAccountPurposeLabel(account.purpose))}</td>
     <td class="assets-table__amount">${formatAmount(account.balance)}</td>
+    <td class="assets-table__change">${latestSnapshot ? formatChange(change) : '—'}</td>
     <td>
       <span class="assets-table__status ${account.isHidden ? 'assets-table__status--disabled' : 'assets-table__status--active'}">
         ${statusLabel}
@@ -308,6 +369,165 @@ function createAccountRow(account) {
   `;
 
   return row;
+}
+
+function openCreateSnapshotModal() {
+  const form = document.createElement('form');
+  form.className = 'assets-form';
+  form.noValidate = true;
+  form.innerHTML = `
+    <p class="assets-form__intro">Снимок сохранит текущие остатки активных средств. Текущие суммы при этом не изменятся.</p>
+    <div class="form-field">
+      <label class="form-field__label" for="snapshot-date">Дата снимка</label>
+      <input class="form-field__input" type="date" id="snapshot-date" name="date" required value="${formatIsoDate(new Date())}">
+      <p class="form-field__error" data-error-for="date" hidden></p>
+    </div>
+    <div class="form-actions">
+      <button type="button" class="btn btn--secondary" data-action="cancel-snapshot">Отмена</button>
+      <button type="submit" class="btn btn--primary">Сохранить снимок</button>
+    </div>
+  `;
+
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    handleCreateSnapshotSubmit(form);
+  });
+
+  form.querySelector('[data-action="cancel-snapshot"]').addEventListener('click', () => {
+    closeModal();
+  });
+
+  openModal({
+    title: 'Ежемесячный снимок средств',
+    content: form,
+  });
+}
+
+function handleCreateSnapshotSubmit(form) {
+  clearFormErrors(form);
+
+  const date = String(new FormData(form).get('date') ?? '').trim();
+
+  if (!date) {
+    showFormErrors(form, { date: 'Укажите дату снимка.' });
+    return;
+  }
+
+  const existing = findAssetsSnapshotByDate(getAppState(), date);
+
+  if (existing) {
+    openReplaceSnapshotConfirm(date);
+    return;
+  }
+
+  persistAssetsSnapshot(date, { replaced: false });
+}
+
+function openReplaceSnapshotConfirm(date) {
+  const content = document.createElement('div');
+  content.className = 'assets-snapshot-confirm';
+  content.innerHTML = `
+    <p class="assets-snapshot-confirm__message">Снимок на выбранную дату уже существует.</p>
+    <p class="assets-snapshot-confirm__message">Новый снимок заменит предыдущий.</p>
+    <p class="assets-snapshot-confirm__message">Продолжить?</p>
+    <div class="form-actions">
+      <button type="button" class="btn btn--secondary" data-action="cancel-replace-snapshot">Отмена</button>
+      <button type="button" class="btn btn--primary" data-action="confirm-replace-snapshot">Заменить снимок</button>
+    </div>
+  `;
+
+  content.querySelector('[data-action="cancel-replace-snapshot"]').addEventListener('click', () => {
+    closeModal();
+  });
+
+  content.querySelector('[data-action="confirm-replace-snapshot"]').addEventListener('click', () => {
+    persistAssetsSnapshot(date, { replaced: true });
+  });
+
+  openModal({
+    title: 'Подтверждение',
+    content,
+  });
+}
+
+function persistAssetsSnapshot(date, { replaced = false } = {}) {
+  updateAppState((draft) => {
+    const snapshot = buildAssetsSnapshotFromState(draft, date);
+    draft.myAssets.snapshots = (draft.myAssets.snapshots ?? []).filter((item) => item.date !== date);
+    draft.myAssets.snapshots.push(snapshot);
+    return draft;
+  });
+
+  closeModal();
+  showNotification({
+    type: 'info',
+    message: replaced ? 'Снимок средств заменён.' : 'Снимок средств сохранён.',
+  });
+}
+
+function renderSnapshotsHistory() {
+  const listRegion = workspace?.querySelector('[data-assets-snapshots-list]');
+
+  if (!listRegion || !isStateInitialized()) {
+    return;
+  }
+
+  const state = getAppState();
+  const snapshots = getSortedAssetsSnapshots(state);
+
+  listRegion.replaceChildren();
+
+  if (snapshots.length === 0) {
+    const empty = document.createElement('p');
+    empty.className = 'assets__empty';
+    empty.textContent = 'Снимков пока нет. Нажмите «Сделать снимок», чтобы зафиксировать состояние средств.';
+    listRegion.append(empty);
+    return;
+  }
+
+  const list = document.createElement('ul');
+  list.className = 'assets-snapshots__items';
+
+  snapshots.forEach((snapshot) => {
+    const previous = getPreviousAssetsSnapshot(state, snapshot);
+    const totalChange = calculateSnapshotAmountChange(snapshot.totalAmount, previous?.totalAmount);
+    const item = document.createElement('li');
+    item.className = 'assets-snapshots__item';
+
+    const accountsMarkup = (snapshot.accountBalances ?? []).map((account) => {
+      const previousBalance = previous?.accountBalances?.find((entry) => entry.accountId === account.accountId)?.balance;
+      const change = calculateSnapshotAmountChange(account.balance, previousBalance);
+
+      return `
+        <li class="assets-snapshots__account">
+          <span class="assets-snapshots__account-name">${escapeHtml(account.name || 'Средство')}</span>
+          <span class="assets-snapshots__account-purpose">${escapeHtml(getAccountPurposeLabel(account.purpose))}</span>
+          <span class="assets-snapshots__account-amount">${formatAmount(account.balance)}</span>
+          <span class="assets-snapshots__account-change">${previous ? formatChange(change) : '—'}</span>
+        </li>
+      `;
+    }).join('');
+
+    item.innerHTML = `
+      <header class="assets-snapshots__item-header">
+        <h4 class="assets-snapshots__item-title">${formatDisplayDate(snapshot.date)}</h4>
+        <p class="assets-snapshots__item-total">${formatAmount(snapshot.totalAmount)}</p>
+      </header>
+      <p class="assets-snapshots__item-meta">
+        Текущие: ${formatAmount(snapshot.currentFunds)} · Запасы: ${formatAmount(snapshot.reserveFunds)}
+        ${previous ? ` · К предыдущему: ${formatChange(totalChange)}` : ''}
+      </p>
+      ${accountsMarkup ? `
+        <ul class="assets-snapshots__accounts">
+          ${accountsMarkup}
+        </ul>
+      ` : '<p class="assets-snapshots__item-meta">Активных средств на дату снимка не было.</p>'}
+    `;
+
+    list.append(item);
+  });
+
+  listRegion.append(list);
 }
 
 function openAddAccountModal() {
@@ -575,6 +795,36 @@ function formatAmount(amount) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })} ₽`;
+}
+
+function formatChange(change) {
+  if (!change || change.absolute == null || !Number.isFinite(change.absolute)) {
+    return '—';
+  }
+
+  const sign = change.absolute > 0 ? '+' : '';
+  const absoluteText = `${sign}${formatAmount(change.absolute)}`;
+
+  if (change.percent == null || !Number.isFinite(change.percent)) {
+    return absoluteText;
+  }
+
+  const percentSign = change.percent > 0 ? '+' : '';
+  return `${absoluteText} (${percentSign}${change.percent}%)`;
+}
+
+function formatDisplayDate(dateString) {
+  if (!dateString) {
+    return '—';
+  }
+
+  const [year, month, day] = String(dateString).split('-');
+
+  if (!year || !month || !day) {
+    return '—';
+  }
+
+  return `${day}.${month}.${year}`;
 }
 
 function escapeHtml(value) {

@@ -6,7 +6,7 @@
 import { getSectionRegion } from './ui.js';
 import { getAppState, updateAppState, isStateInitialized } from './state-service.js';
 import { openModal, closeModal } from './modals.js';
-import { showNotification, syncNotificationsByPrefix } from './notifications.js?v=20260725-11';
+import { showNotification, syncNotificationsByPrefix } from './notifications.js?v=20260725-12';
 import {
   INCOME_TYPES,
   RECURRENCE_FREQUENCIES,

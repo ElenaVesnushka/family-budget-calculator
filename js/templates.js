@@ -5,7 +5,7 @@
 import { getSectionRegion, showSection } from './ui.js';
 import { getAppState, updateAppState, isStateInitialized, updateSessionState } from './state-service.js';
 import { openModal, closeModal } from './modals.js';
-import { showNotification } from './notifications.js?v=20260725-11';
+import { showNotification } from './notifications.js?v=20260725-12';
 import {
   TEMPLATE_TYPES,
   INCOME_TYPES,

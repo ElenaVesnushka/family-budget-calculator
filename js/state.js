@@ -7,7 +7,7 @@
  * — myAssets (мои средства).
  */
 
-export const APP_STATE_VERSION = '1.3.0';
+export const APP_STATE_VERSION = '1.3.1';
 
 export const SECTION_IDS = [
   'dashboard',
@@ -3091,15 +3091,169 @@ export function pickFinancialMoodPhrase(state, referenceDate = new Date()) {
 }
 
 /**
- * Шаблон ежемесячного снимка (раздел 14 ТЗ).
+ * Шаблон ежемесячного снимка средств (раздел 14 ТЗ).
+ * После сохранения не изменяется и не влияет на текущие остатки.
  */
 export function createSnapshotShape() {
   return {
     id: null,
     date: null,
+    periodKey: null,
     accountBalances: [],
+    currentFunds: 0,
+    reserveFunds: 0,
     totalAmount: 0,
+    createdAt: null,
   };
+}
+
+/**
+ * Ключ периода снимка (календарный месяц даты снимка).
+ */
+export function getAssetsSnapshotPeriodKey(dateString) {
+  const date = parseIsoDate(dateString);
+
+  if (!date) {
+    return null;
+  }
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  return `${year}-${month}`;
+}
+
+/**
+ * Снимки, отсортированные от новых к старым.
+ */
+export function getSortedAssetsSnapshots(state) {
+  return [...(state.myAssets?.snapshots ?? [])]
+    .filter((item) => item && item.id && item.date)
+    .sort((first, second) => {
+      const byDate = String(second.date).localeCompare(String(first.date));
+
+      if (byDate !== 0) {
+        return byDate;
+      }
+
+      return String(second.createdAt ?? '').localeCompare(String(first.createdAt ?? ''));
+    });
+}
+
+/**
+ * Есть ли снимок за тот же месяц, что и dateString.
+ */
+export function hasAssetsSnapshotForPeriod(state, dateString) {
+  const periodKey = getAssetsSnapshotPeriodKey(dateString);
+
+  if (!periodKey) {
+    return false;
+  }
+
+  return (state.myAssets?.snapshots ?? []).some((snapshot) => (
+    snapshot.periodKey === periodKey
+    || getAssetsSnapshotPeriodKey(snapshot.date) === periodKey
+  ));
+}
+
+/**
+ * Снимок на точную дату (YYYY-MM-DD), если есть.
+ */
+export function findAssetsSnapshotByDate(state, dateString) {
+  if (!dateString) {
+    return null;
+  }
+
+  return (state.myAssets?.snapshots ?? []).find((snapshot) => snapshot?.date === dateString) ?? null;
+}
+
+/**
+ * Предыдущий снимок относительно переданного (или последний, если snapshot не указан).
+ */
+export function getPreviousAssetsSnapshot(state, snapshot = null) {
+  const sorted = getSortedAssetsSnapshots(state);
+
+  if (!snapshot) {
+    return sorted[0] ?? null;
+  }
+
+  const index = sorted.findIndex((item) => item.id === snapshot.id);
+
+  if (index === -1) {
+    return sorted.find((item) => String(item.date) < String(snapshot.date)) ?? null;
+  }
+
+  return sorted[index + 1] ?? null;
+}
+
+/**
+ * Собирает неизменяемый снимок активных средств на указанную дату.
+ */
+export function buildAssetsSnapshotFromState(state, dateString = formatIsoDate(new Date()), now = new Date().toISOString()) {
+  const date = parseIsoDate(dateString) ? dateString : formatIsoDate(new Date());
+  const accounts = getActiveAccounts(state);
+  const accountBalances = accounts.map((account) => ({
+    accountId: account.id,
+    name: String(account.name ?? '').trim(),
+    accountType: account.accountType ?? null,
+    purpose: normalizeAccountPurpose(account.purpose),
+    balance: Number(account.balance ?? 0),
+  }));
+
+  const currentFunds = accountBalances
+    .filter((item) => item.purpose === ACCOUNT_PURPOSES.CURRENT)
+    .reduce((sum, item) => sum + item.balance, 0);
+  const reserveFunds = accountBalances
+    .filter((item) => item.purpose === ACCOUNT_PURPOSES.RESERVE)
+    .reduce((sum, item) => sum + item.balance, 0);
+
+  return {
+    ...createSnapshotShape(),
+    id: generateId('snapshot'),
+    date,
+    periodKey: getAssetsSnapshotPeriodKey(date),
+    accountBalances,
+    currentFunds,
+    reserveFunds,
+    totalAmount: currentFunds + reserveFunds,
+    createdAt: now,
+  };
+}
+
+/**
+ * Изменение суммы относительно предыдущего снимка.
+ */
+export function calculateSnapshotAmountChange(currentAmount, previousAmount) {
+  const current = Number(currentAmount ?? 0);
+  const previous = previousAmount == null ? null : Number(previousAmount);
+
+  if (previous == null || !Number.isFinite(previous)) {
+    return { absolute: null, percent: null };
+  }
+
+  const absolute = current - previous;
+  const percent = previous === 0
+    ? (current === 0 ? 0 : null)
+    : Math.round(((absolute / previous) * 1000)) / 10;
+
+  return { absolute, percent };
+}
+
+/**
+ * Напоминание о ежемесячном снимке: день наступил, снимка за текущий месяц ещё нет.
+ */
+export function isAssetsSnapshotReminderDue(state, referenceDate = new Date()) {
+  const snapshotDay = Number(state.settings?.monthlySnapshotDay ?? 1);
+  const day = Number.isInteger(snapshotDay) && snapshotDay >= 1 && snapshotDay <= 31
+    ? snapshotDay
+    : 1;
+  const today = startOfDay(referenceDate);
+  const dueDay = clampDay(today.getFullYear(), today.getMonth(), day);
+
+  if (today.getDate() < dueDay) {
+    return false;
+  }
+
+  return !hasAssetsSnapshotForPeriod(state, formatIsoDate(today));
 }
 
 /**
@@ -3354,25 +3508,49 @@ function normalizeSnapshots(snapshots) {
   return uniqueById(snapshots
     .filter((item) => item && typeof item === 'object' && item.id)
     .map((item) => {
-      const accountBalances = Array.isArray(item.accountBalances)
+      const legacyAccounts = Array.isArray(item.accounts) ? item.accounts : [];
+      const sourceBalances = Array.isArray(item.accountBalances) && item.accountBalances.length > 0
         ? item.accountBalances
-          .filter((balance) => balance && typeof balance === 'object' && balance.accountId)
-          .map((balance) => ({
-            accountId: balance.accountId,
-            balance: normalizeFiniteNumber(balance.balance ?? balance.amount, 0),
-          }))
-        : [];
+        : legacyAccounts;
+
+      const accountBalances = sourceBalances
+        .filter((balance) => balance && typeof balance === 'object' && (balance.accountId || balance.id))
+        .map((balance) => ({
+          accountId: balance.accountId ?? balance.id,
+          name: String(balance.name ?? '').trim(),
+          accountType: balance.accountType ?? null,
+          purpose: normalizeAccountPurpose(balance.purpose),
+          balance: normalizeFiniteNumber(balance.balance ?? balance.amount, 0),
+        }));
+
+      const currentFunds = Number.isFinite(Number(item.currentFunds))
+        ? Number(item.currentFunds)
+        : accountBalances
+          .filter((entry) => entry.purpose === ACCOUNT_PURPOSES.CURRENT)
+          .reduce((sum, entry) => sum + entry.balance, 0);
+
+      const reserveFunds = Number.isFinite(Number(item.reserveFunds))
+        ? Number(item.reserveFunds)
+        : accountBalances
+          .filter((entry) => entry.purpose === ACCOUNT_PURPOSES.RESERVE)
+          .reduce((sum, entry) => sum + entry.balance, 0);
 
       const totalAmount = Number.isFinite(Number(item.totalAmount ?? item.totalFunds ?? item.total))
         ? Number(item.totalAmount ?? item.totalFunds ?? item.total)
-        : accountBalances.reduce((sum, entry) => sum + entry.balance, 0);
+        : currentFunds + reserveFunds;
+
+      const date = item.date ?? null;
 
       return {
         ...createSnapshotShape(),
-        ...structuredClone(item),
-        date: item.date ?? null,
+        id: item.id,
+        date,
+        periodKey: item.periodKey || getAssetsSnapshotPeriodKey(date),
         accountBalances,
+        currentFunds,
+        reserveFunds,
         totalAmount,
+        createdAt: item.createdAt ?? null,
       };
     }));
 }

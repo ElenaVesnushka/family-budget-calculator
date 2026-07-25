@@ -5,7 +5,7 @@
 
 import { getSectionRegion } from './ui.js';
 import { getAppState, updateAppState, isStateInitialized } from './state-service.js';
-import { showNotification, hideNotification, syncNotificationsByPrefix } from './notifications.js?v=20260725-11';
+import { showNotification, hideNotification, syncNotificationsByPrefix } from './notifications.js?v=20260725-12';
 import {
   CUSHION_CALCULATION_METHODS,
   buildFinancialCushionFromPayload,

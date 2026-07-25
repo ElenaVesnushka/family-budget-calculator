@@ -20,7 +20,7 @@ import {
   getNotificationsContainer,
   getModalRoot,
 } from './ui.js';
-import { initNotifications, showNotification, hideNotification, hideAllNotifications } from './notifications.js?v=20260725-11';
+import { initNotifications, showNotification, hideNotification, hideAllNotifications } from './notifications.js?v=20260725-12';
 import { initModals, openModal, closeModal, isModalOpen } from './modals.js';
 import { initDashboard } from './dashboard.js';
 import { initIncomes } from './incomes.js';
@@ -29,7 +29,7 @@ import { initExpenses } from './expenses.js';
 import { initLimits, syncLimitWarnings } from './limits.js';
 import { initPlannedExpenses, syncPlannedExpenseReminders } from './planned-expenses.js';
 import { initTemplates } from './templates.js';
-import { initAssets } from './assets.js';
+import { initAssets, syncAssetsSnapshotReminders } from './assets.js?v=20260725-14';
 import { initCushion, syncReserveWarnings } from './cushion.js';
 import { initReports } from './reports.js';
 import { initSettings } from './settings.js';
@@ -63,6 +63,7 @@ function syncConditionalNotifications() {
   syncLimitWarnings();
   syncPlannedExpenseReminders();
   syncExpectedIncomeReminders();
+  syncAssetsSnapshotReminders();
 }
 
 function attachConditionalNotificationsListener() {
