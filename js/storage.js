@@ -7,6 +7,7 @@
  */
 
 import {
+  APP_STATE_VERSION,
   createNewBudget,
   normalizeAppState,
   extractPersistedState,
@@ -24,6 +25,7 @@ export function hasStoredData() {
 /**
  * Загружает и нормализует состояние из localStorage.
  * Возвращает null, если сохранённых данных нет.
+ * При смене версии структуры сразу перезаписывает мигрированные данные.
  */
 export function loadPersistedState() {
   try {
@@ -34,7 +36,14 @@ export function loadPersistedState() {
     }
 
     const parsed = JSON.parse(raw);
-    return normalizeAppState(parsed);
+    const previousVersion = parsed?.meta?.version ?? null;
+    const normalized = normalizeAppState(parsed);
+
+    if (previousVersion !== APP_STATE_VERSION) {
+      return savePersistedState(normalized);
+    }
+
+    return normalized;
   } catch {
     return null;
   }

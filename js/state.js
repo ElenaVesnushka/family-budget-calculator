@@ -7,7 +7,7 @@
  * — myAssets (мои средства).
  */
 
-export const APP_STATE_VERSION = '1.2.0';
+export const APP_STATE_VERSION = '1.3.0';
 
 export const SECTION_IDS = [
   'dashboard',
@@ -1986,15 +1986,24 @@ export function normalizeTemplates(templates) {
     return [];
   }
 
-  return templates
+  const allowedTypes = new Set(Object.values(TEMPLATE_TYPES));
+
+  return uniqueById(templates
     .filter((item) => item && typeof item === 'object' && item.id)
-    .map((item) => ({
-      ...createTemplateShape(),
-      ...structuredClone(item),
-      templateType: normalizeTemplateType(item.templateType),
-      comment: item.comment ?? '',
-      isEnabled: item.isEnabled !== false,
-    }));
+    .map((item) => {
+      const templateType = normalizeTemplateType(item.templateType);
+
+      return {
+        ...createTemplateShape(),
+        ...structuredClone(item),
+        templateType: allowedTypes.has(templateType) ? templateType : null,
+        name: String(item.name ?? '').trim(),
+        comment: String(item.comment ?? '').trim(),
+        isEnabled: item.isEnabled !== false,
+        lastUsedAt: item.lastUsedAt ?? null,
+      };
+    })
+    .filter((item) => item.templateType));
 }
 
 const ACCOUNT_TYPE_VALUES = new Set(Object.values(ACCOUNT_TYPES));
@@ -2131,7 +2140,7 @@ export function normalizeAccounts(accounts) {
     return [];
   }
 
-  return accounts
+  return uniqueById(accounts
     .filter((item) => item && typeof item === 'object' && item.id)
     .map((item) => ({
       ...createAccountShape(),
@@ -2139,10 +2148,10 @@ export function normalizeAccounts(accounts) {
       name: String(item.name ?? '').trim(),
       accountType: ACCOUNT_TYPE_VALUES.has(item.accountType) ? item.accountType : null,
       purpose: normalizeAccountPurpose(item.purpose),
-      balance: Number.isFinite(Number(item.balance)) ? Number(item.balance) : 0,
+      balance: normalizeFiniteNumber(item.balance, 0),
       comment: String(item.comment ?? '').trim(),
       isHidden: Boolean(item.isHidden),
-    }));
+    })));
 }
 
 /**
@@ -2157,9 +2166,7 @@ export function normalizeMyAssets(myAssets) {
 
   return {
     accounts: normalizeAccounts(myAssets.accounts),
-    snapshots: Array.isArray(myAssets.snapshots)
-      ? structuredClone(myAssets.snapshots)
-      : [],
+    snapshots: normalizeSnapshots(myAssets.snapshots),
   };
 }
 
@@ -3112,7 +3119,8 @@ export function createNotificationShape() {
 }
 
 /**
- * Переносит финансовую подушку из старых настроек в отдельную сущность.
+ * Миграции устаревших структур перед возвращением нормализованного состояния.
+ * Существующие данные не удаляются без необходимости; только перенос и очистка legacy-полей.
  */
 function migrateLegacyState(rawState) {
   if (!rawState || typeof rawState !== 'object') {
@@ -3121,12 +3129,44 @@ function migrateLegacyState(rawState) {
 
   const migrated = structuredClone(rawState);
 
+  // Подушка раньше жила в settings.
   if (migrated.settings?.financialCushion && !migrated.financialCushion) {
     migrated.financialCushion = migrated.settings.financialCushion;
     delete migrated.settings.financialCushion;
   }
 
+  // Статьи перенесены в references.expenseArticles.
   if (migrated.settings?.customExpenseArticles) {
+    const legacyArticles = Array.isArray(migrated.settings.customExpenseArticles)
+      ? migrated.settings.customExpenseArticles
+      : [];
+
+    if (!migrated.references || typeof migrated.references !== 'object') {
+      migrated.references = {};
+    }
+
+    if (!Array.isArray(migrated.references.expenseArticles)) {
+      migrated.references.expenseArticles = [];
+    }
+
+    legacyArticles.forEach((article) => {
+      if (!article || typeof article !== 'object' || !article.id) {
+        return;
+      }
+
+      const exists = migrated.references.expenseArticles.some((item) => item.id === article.id);
+
+      if (!exists) {
+        migrated.references.expenseArticles.push({
+          ...createExpenseArticleShape(),
+          ...article,
+          isSystem: false,
+          isStandard: false,
+          isHidden: Boolean(article.isHidden),
+        });
+      }
+    });
+
     delete migrated.settings.customExpenseArticles;
   }
 
@@ -3134,7 +3174,236 @@ function migrateLegacyState(rawState) {
     migrated.settings.moodPhrases = normalizeMoodPhrases(migrated.settings.moodPhrases);
   }
 
+  // Устаревший «Мой запас» / reserveFunds как отдельная сущность больше не используется.
+  if (migrated.myReserve !== undefined) {
+    delete migrated.myReserve;
+  }
+
+  if (migrated.reserve !== undefined) {
+    delete migrated.reserve;
+  }
+
   return migrated;
+}
+
+function uniqueById(items) {
+  const seen = new Set();
+
+  return items.filter((item) => {
+    if (!item?.id || seen.has(item.id)) {
+      return false;
+    }
+
+    seen.add(item.id);
+    return true;
+  });
+}
+
+function normalizeFiniteNumber(value, fallback = 0) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+}
+
+function normalizeRecurrence(recurrence) {
+  const defaults = createRecurrenceShape();
+
+  if (!recurrence || typeof recurrence !== 'object') {
+    return structuredClone(defaults);
+  }
+
+  const allowedFrequencies = new Set([
+    ...Object.values(RECURRENCE_FREQUENCIES),
+    EXPECTED_INCOME_RECURRENCE_ONCE,
+  ]);
+
+  const frequency = allowedFrequencies.has(recurrence.frequency)
+    ? recurrence.frequency
+    : null;
+
+  const intervalDays = recurrence.intervalDays == null || recurrence.intervalDays === ''
+    ? null
+    : normalizeFiniteNumber(recurrence.intervalDays, null);
+
+  const intervalMonths = recurrence.intervalMonths == null || recurrence.intervalMonths === ''
+    ? null
+    : normalizeFiniteNumber(recurrence.intervalMonths, null);
+
+  return {
+    frequency,
+    intervalDays: intervalDays === null || intervalDays > 0 ? intervalDays : null,
+    intervalMonths: intervalMonths === null || intervalMonths > 0 ? intervalMonths : null,
+  };
+}
+
+function normalizeIncomes(incomes) {
+  if (!Array.isArray(incomes)) {
+    return [];
+  }
+
+  return uniqueById(incomes
+    .filter((item) => item && typeof item === 'object' && item.id)
+    .map((item) => ({
+      ...createIncomeShape(),
+      ...structuredClone(item),
+      name: String(item.name ?? item.source ?? '').trim(),
+      amount: normalizeFiniteNumber(item.amount, 0),
+      comment: String(item.comment ?? '').trim(),
+      sourceExpectedIncomeId: item.sourceExpectedIncomeId ?? null,
+      sourceOccurrenceDate: item.sourceOccurrenceDate ?? null,
+    })));
+}
+
+function normalizeExpenses(expenses) {
+  if (!Array.isArray(expenses)) {
+    return [];
+  }
+
+  return uniqueById(expenses
+    .filter((item) => item && typeof item === 'object' && item.id)
+    .map((item) => ({
+      ...createExpenseShape(),
+      ...structuredClone(item),
+      name: String(item.name ?? '').trim(),
+      amount: normalizeFiniteNumber(item.amount, 0),
+      comment: String(item.comment ?? '').trim(),
+      sourcePlannedExpenseId: item.sourcePlannedExpenseId ?? null,
+      sourceOccurrenceDate: item.sourceOccurrenceDate ?? null,
+    })));
+}
+
+function normalizeLimitsList(limits) {
+  if (!Array.isArray(limits)) {
+    return [];
+  }
+
+  return uniqueById(limits
+    .filter((item) => item && typeof item === 'object' && item.id)
+    .map((item) => ({
+      ...createLimitShape(),
+      ...structuredClone(item),
+      amount: Math.max(0, normalizeFiniteNumber(item.amount, 0)),
+    })));
+}
+
+function normalizePlannedExpenses(plannedExpenses) {
+  if (!Array.isArray(plannedExpenses)) {
+    return [];
+  }
+
+  return uniqueById(plannedExpenses
+    .filter((item) => item && typeof item === 'object' && item.id)
+    .map((item) => {
+      const firstDate = item.firstDate ?? item.nextOccurrenceDate ?? null;
+      const nextOccurrenceDate = item.nextOccurrenceDate ?? firstDate ?? null;
+
+      return {
+        ...createPlannedExpenseShape(),
+        ...structuredClone(item),
+        name: String(item.name ?? '').trim(),
+        amount: normalizeFiniteNumber(item.amount, 0),
+        comment: String(item.comment ?? '').trim(),
+        firstDate,
+        nextOccurrenceDate,
+        recurrence: normalizeRecurrence(item.recurrence),
+        isEnabled: item.isEnabled !== false,
+      };
+    }));
+}
+
+function normalizeExpectedIncomes(expectedIncomes) {
+  if (!Array.isArray(expectedIncomes)) {
+    return [];
+  }
+
+  return uniqueById(expectedIncomes
+    .filter((item) => item && typeof item === 'object' && item.id)
+    .map((item) => ({
+      ...createExpectedIncomeShape(),
+      ...structuredClone(item),
+      name: String(item.name ?? '').trim(),
+      amount: normalizeFiniteNumber(item.amount, 0),
+      comment: String(item.comment ?? '').trim(),
+      nextOccurrenceDate: item.nextOccurrenceDate ?? null,
+      recurrence: normalizeRecurrence(item.recurrence),
+      isEnabled: item.isEnabled !== false,
+    })));
+}
+
+/**
+ * Нормализует currentBudget: гарантирует массивы и поля операций.
+ */
+export function normalizeCurrentBudget(currentBudget) {
+  if (!currentBudget || typeof currentBudget !== 'object') {
+    return createDefaultCurrentBudget();
+  }
+
+  return {
+    incomes: normalizeIncomes(currentBudget.incomes),
+    expenses: normalizeExpenses(currentBudget.expenses),
+    limits: normalizeLimitsList(currentBudget.limits),
+    plannedExpenses: normalizePlannedExpenses(currentBudget.plannedExpenses),
+    expectedIncomes: normalizeExpectedIncomes(currentBudget.expectedIncomes),
+  };
+}
+
+function normalizeSnapshots(snapshots) {
+  if (!Array.isArray(snapshots)) {
+    return [];
+  }
+
+  return uniqueById(snapshots
+    .filter((item) => item && typeof item === 'object' && item.id)
+    .map((item) => {
+      const accountBalances = Array.isArray(item.accountBalances)
+        ? item.accountBalances
+          .filter((balance) => balance && typeof balance === 'object' && balance.accountId)
+          .map((balance) => ({
+            accountId: balance.accountId,
+            balance: normalizeFiniteNumber(balance.balance ?? balance.amount, 0),
+          }))
+        : [];
+
+      const totalAmount = Number.isFinite(Number(item.totalAmount ?? item.totalFunds ?? item.total))
+        ? Number(item.totalAmount ?? item.totalFunds ?? item.total)
+        : accountBalances.reduce((sum, entry) => sum + entry.balance, 0);
+
+      return {
+        ...createSnapshotShape(),
+        ...structuredClone(item),
+        date: item.date ?? null,
+        accountBalances,
+        totalAmount,
+      };
+    }));
+}
+
+/**
+ * Нормализует сохранённый список уведомлений (не UI-панель).
+ * Условные reminder/warning пересчитываются при запуске и здесь не дублируются.
+ */
+export function normalizeNotifications(notifications) {
+  const defaults = createDefaultNotifications();
+
+  if (!notifications || typeof notifications !== 'object') {
+    return structuredClone(defaults);
+  }
+
+  const allowedTypes = new Set(Object.values(NOTIFICATION_TYPES));
+
+  const items = Array.isArray(notifications.items)
+    ? uniqueById(notifications.items
+      .filter((item) => item && typeof item === 'object' && item.id)
+      .map((item) => ({
+        ...createNotificationShape(),
+        ...structuredClone(item),
+        type: allowedTypes.has(item.type) ? item.type : NOTIFICATION_TYPES.INFO,
+        message: String(item.message ?? '').trim(),
+        source: String(item.source ?? '').trim(),
+        isDismissed: Boolean(item.isDismissed),
+      })))
+    : [];
+
+  return { items };
 }
 
 /**
@@ -3151,22 +3420,23 @@ export function normalizeAppState(rawState) {
   return {
     meta: {
       ...defaults.meta,
-      ...migrated.meta,
+      ...(migrated.meta && typeof migrated.meta === 'object' ? migrated.meta : {}),
       version: APP_STATE_VERSION,
       budgetId: migrated.meta?.budgetId ?? defaults.meta.budgetId,
       createdAt: migrated.meta?.createdAt ?? defaults.meta.createdAt,
+      lastSavedAt: migrated.meta?.lastSavedAt ?? null,
     },
     settings: normalizeSettings(migrated.settings),
-    financialCushion: normalizeFinancialCushion(deepMerge(defaults.financialCushion, migrated.financialCushion)),
+    financialCushion: normalizeFinancialCushion(migrated.financialCushion),
     references: mergeReferences(defaults.references, migrated.references),
-    currentBudget: deepMerge(defaults.currentBudget, migrated.currentBudget),
+    currentBudget: normalizeCurrentBudget(migrated.currentBudget),
     templates: normalizeTemplates(migrated.templates),
-    myAssets: normalizeMyAssets(deepMerge(defaults.myAssets, migrated.myAssets)),
-    notifications: deepMerge(defaults.notifications, migrated.notifications),
+    myAssets: normalizeMyAssets(migrated.myAssets),
+    notifications: normalizeNotifications(migrated.notifications),
     reports: normalizeReports(migrated.reports),
     ui: {
       ...defaults.ui,
-      ...migrated.ui,
+      ...(migrated.ui && typeof migrated.ui === 'object' ? migrated.ui : {}),
     },
   };
 }
