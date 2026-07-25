@@ -20,7 +20,7 @@ import {
   getNotificationsContainer,
   getModalRoot,
 } from './ui.js';
-import { initNotifications, showNotification, hideNotification, hideAllNotifications } from './notifications.js';
+import { initNotifications, showNotification, hideNotification, hideAllNotifications } from './notifications.js?v=20260725-11';
 import { initModals, openModal, closeModal, isModalOpen } from './modals.js';
 import { initDashboard } from './dashboard.js';
 import { initIncomes } from './incomes.js';

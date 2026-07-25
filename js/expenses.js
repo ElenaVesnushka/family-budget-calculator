@@ -7,7 +7,7 @@
 import { getSectionRegion } from './ui.js';
 import { getAppState, updateAppState, isStateInitialized } from './state-service.js';
 import { openModal, closeModal } from './modals.js';
-import { showNotification } from './notifications.js';
+import { showNotification } from './notifications.js?v=20260725-11';
 import { offerCreateTemplateFromExpense } from './template-prompt.js';
 import {
   getExpenseCategories,
