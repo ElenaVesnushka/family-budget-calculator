@@ -19,7 +19,8 @@ import {
   buildPlannedExpenseFromPayload,
   buildRecurrenceFromPayload,
   validateExpensePayload,
-  buildExpenseFromPayload,
+  applyPlannedExpenseConfirmation,
+  findExpenseByPlannedOccurrence,
   calculateNextOccurrenceDate,
   isPlannedExpenseDue,
   isPlannedExpenseRecurring,
@@ -601,7 +602,7 @@ function createPlannedExpenseForm(plannedExpense = null) {
       <p class="form-field__error" data-error-for="amount" hidden></p>
     </div>
     <div class="form-field">
-      <label class="form-field__label" for="planned-first-date">Дата планового расхода</label>
+      <label class="form-field__label" for="planned-first-date">Дата следующего выполнения</label>
       <input class="form-field__input" type="date" id="planned-first-date" name="firstDate" required>
       <p class="form-field__error" data-error-for="firstDate" hidden></p>
     </div>
@@ -642,7 +643,9 @@ function createPlannedExpenseForm(plannedExpense = null) {
     form.querySelector('#planned-category').value = plannedExpense.categoryId ?? '';
     form.querySelector('#planned-article').value = plannedExpense.articleId ?? '';
     form.querySelector('#planned-amount').value = plannedExpense.amount != null ? String(plannedExpense.amount) : '';
-    form.querySelector('#planned-first-date').value = plannedExpense.firstDate ?? formatIsoDate(new Date());
+    form.querySelector('#planned-first-date').value = isEdit
+      ? (plannedExpense.nextOccurrenceDate ?? plannedExpense.firstDate ?? formatIsoDate(new Date()))
+      : (plannedExpense.firstDate ?? formatIsoDate(new Date()));
     form.querySelector('#planned-interval-days').value = plannedExpense.recurrence?.intervalDays ?? '';
     form.querySelector('#planned-interval-months').value = plannedExpense.recurrence?.intervalMonths ?? '';
     form.querySelector('#planned-comment').value = plannedExpense.comment ?? '';
@@ -743,6 +746,9 @@ function handlePlannedExpenseFormSubmit(form) {
 
       const current = draft.currentBudget.plannedExpenses[index];
       const recurrence = buildRecurrenceFromPayload(payload);
+      // Дата из формы — дата следующего выполнения (раздел 18 ТЗ).
+      // Список, календарь и статус «Ожидает подтверждения» используют nextOccurrenceDate.
+      const nextOccurrenceDate = payload.firstDate;
 
       draft.currentBudget.plannedExpenses[index] = {
         ...current,
@@ -750,7 +756,8 @@ function handlePlannedExpenseFormSubmit(form) {
         categoryId: payload.categoryId,
         articleId: payload.articleId,
         amount: Number(payload.amount),
-        firstDate: payload.firstDate,
+        firstDate: current.firstDate || nextOccurrenceDate,
+        nextOccurrenceDate,
         comment: payload.comment,
         recurrence,
         updatedAt: now,
@@ -839,17 +846,35 @@ function handleConfirmPlannedExpenseSubmit(form) {
     return;
   }
 
+  const occurrenceDate = plannedExpense.nextOccurrenceDate;
+  const alreadyConfirmed = findExpenseByPlannedOccurrence(
+    getAppState(),
+    plannedExpenseId,
+    occurrenceDate,
+  );
+
+  if (alreadyConfirmed) {
+    showNotification({
+      type: 'info',
+      message: 'Этот расход уже подтверждён. Повторная операция не создана.',
+    });
+    closeModal();
+    return;
+  }
+
   const submitButton = form.querySelector('[data-action="submit-confirm-planned"]');
   submitButton.disabled = true;
   confirmingIds.add(plannedExpenseId);
 
   const formData = new FormData(form);
+  const amount = String(formData.get('amount') ?? '').trim();
+  const date = String(formData.get('date') ?? '').trim();
   const payload = {
     categoryId: plannedExpense.categoryId,
     articleId: plannedExpense.articleId,
     name: plannedExpense.name,
-    date: String(formData.get('date') ?? '').trim(),
-    amount: String(formData.get('amount') ?? '').trim(),
+    date,
+    amount,
     comment: plannedExpense.comment ?? '',
   };
 
@@ -863,32 +888,39 @@ function handleConfirmPlannedExpenseSubmit(form) {
     return;
   }
 
-  const expense = buildExpenseFromPayload(payload);
-  const now = new Date().toISOString();
-  const isRecurring = isPlannedExpenseRecurring(plannedExpense.recurrence);
+  let result = { status: 'not-found' };
 
   updateAppState((draft) => {
-    draft.currentBudget.expenses.push(expense);
-
-    const index = draft.currentBudget.plannedExpenses.findIndex((item) => item.id === plannedExpenseId);
-
-    if (index !== -1) {
-      draft.currentBudget.plannedExpenses[index] = {
-        ...draft.currentBudget.plannedExpenses[index],
-        nextOccurrenceDate: isRecurring
-          ? calculateNextOccurrenceDate(plannedExpense.nextOccurrenceDate, plannedExpense.recurrence)
-          : plannedExpense.nextOccurrenceDate,
-        isEnabled: isRecurring,
-        updatedAt: now,
-      };
-    }
-
+    result = applyPlannedExpenseConfirmation(draft, plannedExpenseId, {
+      amount,
+      date,
+    });
     return draft;
   });
 
   confirmingIds.delete(plannedExpenseId);
   closeModal();
-  showNotification({ type: 'info', message: 'Расход подтверждён и сохранён.' });
+
+  if (result.status === 'created') {
+    showNotification({
+      type: 'info',
+      message: 'Расход подтверждён и добавлен в фактические операции.',
+    });
+    return;
+  }
+
+  if (result.status === 'already-confirmed') {
+    showNotification({
+      type: 'info',
+      message: 'Этот расход уже подтверждён. Повторная операция не создана.',
+    });
+    return;
+  }
+
+  showNotification({
+    type: 'info',
+    message: 'Не удалось подтвердить плановый расход.',
+  });
 }
 
 function openPostponePlannedExpenseModal(plannedExpenseId) {

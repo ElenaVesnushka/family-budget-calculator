@@ -17,7 +17,8 @@ import {
   buildExpectedIncomeFromPayload,
   buildRecurrenceFromPayload,
   validateIncomePayload,
-  buildIncomeFromPayload,
+  applyExpectedIncomeConfirmation,
+  findIncomeByExpectedOccurrence,
   calculateNextOccurrenceDate,
   isExpectedIncomeDue,
   isExpectedIncomeRecurring,
@@ -815,6 +816,23 @@ function handleConfirmExpectedIncomeSubmit(form) {
   const expectedIncome = findExpectedIncome(expectedIncomeId);
 
   if (!expectedIncome) {
+    showNotification({ type: 'info', message: 'Ожидаемый доход не найден.' });
+    closeModal();
+    return;
+  }
+
+  const occurrenceDate = expectedIncome.nextOccurrenceDate;
+  const alreadyConfirmed = findIncomeByExpectedOccurrence(
+    getAppState(),
+    expectedIncomeId,
+    occurrenceDate,
+  );
+
+  if (alreadyConfirmed) {
+    showNotification({
+      type: 'info',
+      message: 'Это поступление уже подтверждено. Повторная операция не создана.',
+    });
     closeModal();
     return;
   }
@@ -824,11 +842,13 @@ function handleConfirmExpectedIncomeSubmit(form) {
   confirmingIds.add(expectedIncomeId);
 
   const formData = new FormData(form);
+  const amount = String(formData.get('amount') ?? '').trim();
+  const date = String(formData.get('date') ?? '').trim();
   const payload = {
     category: expectedIncome.incomeType,
     source: expectedIncome.name,
-    date: String(formData.get('date') ?? '').trim(),
-    amount: String(formData.get('amount') ?? '').trim(),
+    date,
+    amount,
     comment: expectedIncome.comment ?? '',
   };
 
@@ -841,31 +861,39 @@ function handleConfirmExpectedIncomeSubmit(form) {
     return;
   }
 
-  const income = buildIncomeFromPayload(payload);
-  const now = new Date().toISOString();
-  const isRecurring = isExpectedIncomeRecurring(expectedIncome.recurrence);
+  let result = { status: 'not-found' };
 
   updateAppState((draft) => {
-    draft.currentBudget.incomes.push(income);
-
-    const index = draft.currentBudget.expectedIncomes.findIndex((item) => item.id === expectedIncomeId);
-
-    if (index !== -1) {
-      draft.currentBudget.expectedIncomes[index] = {
-        ...draft.currentBudget.expectedIncomes[index],
-        nextOccurrenceDate: isRecurring
-          ? calculateNextOccurrenceDate(expectedIncome.nextOccurrenceDate, expectedIncome.recurrence)
-          : expectedIncome.nextOccurrenceDate,
-        isEnabled: isRecurring,
-        updatedAt: now,
-      };
-    }
-
+    result = applyExpectedIncomeConfirmation(draft, expectedIncomeId, {
+      amount,
+      date,
+    });
     return draft;
   });
 
   confirmingIds.delete(expectedIncomeId);
   closeModal();
+
+  if (result.status === 'created') {
+    showNotification({
+      type: 'info',
+      message: 'Доход подтверждён и добавлен в фактические операции.',
+    });
+    return;
+  }
+
+  if (result.status === 'already-confirmed') {
+    showNotification({
+      type: 'info',
+      message: 'Это поступление уже подтверждено. Повторная операция не создана.',
+    });
+    return;
+  }
+
+  showNotification({
+    type: 'info',
+    message: 'Не удалось подтвердить ожидаемый доход.',
+  });
 }
 
 function openPostponeExpectedIncomeModal(expectedIncomeId) {

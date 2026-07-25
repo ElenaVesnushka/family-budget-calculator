@@ -234,6 +234,8 @@ export function createIncomeShape() {
     date: null,
     amount: 0,
     comment: '',
+    sourceExpectedIncomeId: null,
+    sourceOccurrenceDate: null,
     createdAt: null,
     updatedAt: null,
   };
@@ -251,6 +253,8 @@ export function createExpenseShape() {
     date: null,
     amount: 0,
     comment: '',
+    sourcePlannedExpenseId: null,
+    sourceOccurrenceDate: null,
     createdAt: null,
     updatedAt: null,
   };
@@ -638,6 +642,14 @@ export function buildExpenseFromPayload(payload, existingExpense = null, now = n
     comment: String(payload.comment ?? '').trim(),
     updatedAt: now,
   };
+
+  if (payload.sourcePlannedExpenseId != null) {
+    fields.sourcePlannedExpenseId = String(payload.sourcePlannedExpenseId).trim() || null;
+  }
+
+  if (payload.sourceOccurrenceDate != null) {
+    fields.sourceOccurrenceDate = String(payload.sourceOccurrenceDate).trim() || null;
+  }
 
   if (existingExpense) {
     return {
@@ -1083,6 +1095,14 @@ export function buildIncomeFromPayload(payload, existingIncome = null, now = new
     updatedAt: now,
   };
 
+  if (payload.sourceExpectedIncomeId != null) {
+    fields.sourceExpectedIncomeId = String(payload.sourceExpectedIncomeId).trim() || null;
+  }
+
+  if (payload.sourceOccurrenceDate != null) {
+    fields.sourceOccurrenceDate = String(payload.sourceOccurrenceDate).trim() || null;
+  }
+
   if (existingIncome) {
     return {
       ...existingIncome,
@@ -1255,6 +1275,143 @@ export function isExpectedIncomeDue(expectedIncome, referenceDate = new Date()) 
   }
 
   return startOfDay(nextDate) <= startOfDay(referenceDate);
+}
+
+/**
+ * Ищет уже созданный фактический доход по ожидаемому наступлению.
+ */
+export function findIncomeByExpectedOccurrence(state, expectedIncomeId, occurrenceDate) {
+  if (!expectedIncomeId || !occurrenceDate) {
+    return null;
+  }
+
+  return (state.currentBudget?.incomes ?? []).find((income) => (
+    income.sourceExpectedIncomeId === expectedIncomeId
+    && income.sourceOccurrenceDate === occurrenceDate
+  )) ?? null;
+}
+
+/**
+ * Ищет уже созданный фактический расход по плановому наступлению.
+ */
+export function findExpenseByPlannedOccurrence(state, plannedExpenseId, occurrenceDate) {
+  if (!plannedExpenseId || !occurrenceDate) {
+    return null;
+  }
+
+  return (state.currentBudget?.expenses ?? []).find((expense) => (
+    expense.sourcePlannedExpenseId === plannedExpenseId
+    && expense.sourceOccurrenceDate === occurrenceDate
+  )) ?? null;
+}
+
+/**
+ * Подтверждает ожидаемый доход: создаёт фактическую операцию и сдвигает план.
+ * Не создаёт дубликат, если это наступление уже подтверждено.
+ *
+ * @returns {{ status: 'created'|'already-confirmed'|'not-found'|'not-due', income: object|null, occurrenceDate: string|null }}
+ */
+export function applyExpectedIncomeConfirmation(draft, expectedIncomeId, confirmation = {}, now = new Date().toISOString()) {
+  const index = draft.currentBudget.expectedIncomes.findIndex((item) => item.id === expectedIncomeId);
+
+  if (index === -1) {
+    return { status: 'not-found', income: null, occurrenceDate: null };
+  }
+
+  const expectedIncome = draft.currentBudget.expectedIncomes[index];
+  const occurrenceDate = expectedIncome.nextOccurrenceDate;
+
+  if (!expectedIncome.isEnabled || !occurrenceDate) {
+    return { status: 'not-due', income: null, occurrenceDate };
+  }
+
+  const existing = findIncomeByExpectedOccurrence(draft, expectedIncomeId, occurrenceDate);
+
+  if (existing) {
+    return { status: 'already-confirmed', income: existing, occurrenceDate };
+  }
+
+  const amount = confirmation.amount != null ? confirmation.amount : expectedIncome.amount;
+  const date = confirmation.date != null ? confirmation.date : occurrenceDate;
+  const income = buildIncomeFromPayload({
+    category: expectedIncome.incomeType,
+    source: expectedIncome.name,
+    date,
+    amount,
+    comment: expectedIncome.comment ?? '',
+    sourceExpectedIncomeId: expectedIncomeId,
+    sourceOccurrenceDate: occurrenceDate,
+  }, null, now);
+
+  draft.currentBudget.incomes.push(income);
+
+  const isRecurring = isExpectedIncomeRecurring(expectedIncome.recurrence);
+
+  draft.currentBudget.expectedIncomes[index] = {
+    ...expectedIncome,
+    nextOccurrenceDate: isRecurring
+      ? calculateNextOccurrenceDate(occurrenceDate, expectedIncome.recurrence)
+      : occurrenceDate,
+    isEnabled: isRecurring,
+    updatedAt: now,
+  };
+
+  return { status: 'created', income, occurrenceDate };
+}
+
+/**
+ * Подтверждает плановый расход: создаёт фактическую операцию и сдвигает план.
+ * Не создаёт дубликат, если это наступление уже подтверждено.
+ *
+ * @returns {{ status: 'created'|'already-confirmed'|'not-found'|'not-due', expense: object|null, occurrenceDate: string|null }}
+ */
+export function applyPlannedExpenseConfirmation(draft, plannedExpenseId, confirmation = {}, now = new Date().toISOString()) {
+  const index = draft.currentBudget.plannedExpenses.findIndex((item) => item.id === plannedExpenseId);
+
+  if (index === -1) {
+    return { status: 'not-found', expense: null, occurrenceDate: null };
+  }
+
+  const plannedExpense = draft.currentBudget.plannedExpenses[index];
+  const occurrenceDate = plannedExpense.nextOccurrenceDate;
+
+  if (!plannedExpense.isEnabled || !occurrenceDate) {
+    return { status: 'not-due', expense: null, occurrenceDate };
+  }
+
+  const existing = findExpenseByPlannedOccurrence(draft, plannedExpenseId, occurrenceDate);
+
+  if (existing) {
+    return { status: 'already-confirmed', expense: existing, occurrenceDate };
+  }
+
+  const amount = confirmation.amount != null ? confirmation.amount : plannedExpense.amount;
+  const date = confirmation.date != null ? confirmation.date : occurrenceDate;
+  const expense = buildExpenseFromPayload({
+    categoryId: plannedExpense.categoryId,
+    articleId: plannedExpense.articleId,
+    name: plannedExpense.name,
+    date,
+    amount,
+    comment: plannedExpense.comment ?? '',
+    sourcePlannedExpenseId: plannedExpenseId,
+    sourceOccurrenceDate: occurrenceDate,
+  }, null, now);
+
+  draft.currentBudget.expenses.push(expense);
+
+  const isRecurring = isPlannedExpenseRecurring(plannedExpense.recurrence);
+
+  draft.currentBudget.plannedExpenses[index] = {
+    ...plannedExpense,
+    nextOccurrenceDate: isRecurring
+      ? calculateNextOccurrenceDate(occurrenceDate, plannedExpense.recurrence)
+      : occurrenceDate,
+    isEnabled: isRecurring,
+    updatedAt: now,
+  };
+
+  return { status: 'created', expense, occurrenceDate };
 }
 
 /**
