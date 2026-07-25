@@ -56,37 +56,30 @@
   color: var(--color-income);
 }
 
-.cushion-progress {
-  margin-top: var(--space-4);
+.cushion-overview__status {
+  margin: var(--space-3) 0 var(--space-2);
 }
 
-.cushion-progress__header {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-3);
-  margin-bottom: var(--space-2);
+.cushion-overview__state {
+  display: inline-block;
   font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
 }
 
-.cushion-progress__bar {
-  height: 0.625rem;
-  background-color: var(--color-bg-subtle);
-  border-radius: var(--radius-full);
-  overflow: hidden;
+.cushion-overview__state--stable {
+  color: var(--color-income);
 }
 
-.cushion-progress__fill {
-  display: block;
-  height: 100%;
-  background-color: var(--color-accent);
-  border-radius: var(--radius-full);
-  transition: width var(--transition-normal);
+.cushion-overview__state--acceptable {
+  color: var(--color-accent);
 }
 
-.cushion-progress__remainder {
-  margin: var(--space-2) 0 0;
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
+.cushion-overview__state--alert {
+  color: var(--color-warning);
+}
+
+.cushion-overview__state--critical {
+  color: var(--color-expense);
 }
 
 .cushion-settings {

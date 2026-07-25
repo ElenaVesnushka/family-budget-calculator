@@ -11,6 +11,7 @@ import {
   calculatePeriodBalance,
   determineFinancialMoodState,
   getFinancialMoodStateLabel,
+  getFinancialMoodStatusText,
   getReferenceName,
   INCOME_TYPES,
   pickFinancialMoodPhrase,
@@ -197,21 +198,16 @@ function renderCushionContent(state = getAppState()) {
     `;
   }
 
+  const moodState = determineFinancialMoodState(state);
+  const statusText = getFinancialMoodStatusText(moodState);
+
   return `
     <div class="dashboard-metric">
       <p class="dashboard-metric__value">${formatAmount(snapshot.targetAmount)}</p>
-      <p class="dashboard-metric__hint">Минимальный безопасный уровень · баланс покрывает ${Math.round(snapshot.achievementPercent)}%</p>
-      <div class="dashboard-progress">
-        <div class="dashboard-progress__bar">
-          <span class="dashboard-progress__fill" style="width: ${Math.min(100, snapshot.achievementPercent)}%"></span>
-        </div>
-      </div>
+      <p class="dashboard-metric__hint">Минимальный безопасный уровень</p>
       <p class="dashboard-metric__sub">
-        ${snapshot.periodBalance < 0
-    ? `Баланс периода: ${formatAmount(snapshot.periodBalance)}`
-    : snapshot.remainderToGoal > 0
-      ? `До безопасного уровня: ${formatAmount(snapshot.remainderToGoal)}`
-      : `Безопасный уровень соблюдён · баланс: ${formatAmount(snapshot.periodBalance)}`}
+        <span class="dashboard-metric__state">${escapeHtml(getFinancialMoodStateLabel(moodState))}</span>
+        ${statusText ? ` · ${escapeHtml(statusText)}` : ''}
       </p>
     </div>
   `;

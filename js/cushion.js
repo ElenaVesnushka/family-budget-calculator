@@ -8,9 +8,13 @@ import { getAppState, updateAppState, isStateInitialized } from './state-service
 import { showNotification, hideNotification, syncNotificationsByPrefix } from './notifications.js?v=20260725-12';
 import {
   CUSHION_CALCULATION_METHODS,
+  FINANCIAL_MOOD_STATES,
   buildFinancialCushionFromPayload,
   calculateFinancialReserveSnapshot,
+  determineFinancialMoodState,
   getCushionMethodLabel,
+  getFinancialMoodStateLabel,
+  getFinancialMoodStatusText,
   validateFinancialCushionPayload,
 } from './state.js';
 
@@ -83,13 +87,13 @@ export function syncReserveWarnings() {
     items.push({
       id: 'balance-negative',
       type: 'warning',
-      message: 'Текущие доходы не покрывают текущие расходы. Возможно, стоит пересмотреть расходы или ожидаемые поступления.',
+      message: getFinancialMoodStatusText(FINANCIAL_MOOD_STATES.CRITICAL),
     });
   } else if (state.financialCushion?.enabled && periodBalance < snapshot.targetAmount) {
     items.push({
       id: 'balance-below-cushion',
       type: 'warning',
-      message: 'Баланс периода ниже установленного безопасного уровня. Проверьте расходы и размер финансовой подушки.',
+      message: getFinancialMoodStatusText(FINANCIAL_MOOD_STATES.ALERT),
     });
   }
 
@@ -143,7 +147,7 @@ function renderOverview() {
         <p class="cushion-overview__value ${balanceClass}">${formatAmount(snapshot.periodBalance)}</p>
         <p class="cushion-overview__hint">Сравнивается с финансовой подушкой для оценки состояния</p>
       </article>
-      ${snapshot.cushion.enabled ? renderProgressBlock(snapshot) : `
+      ${snapshot.cushion.enabled ? renderCushionStatusBlock(snapshot) : `
         <article class="cushion-overview__card cushion-overview__card--muted">
           <p class="cushion-overview__label">Финансовая подушка</p>
           <p class="cushion-overview__value">Отключена</p>
@@ -162,7 +166,9 @@ function renderOverview() {
   `;
 }
 
-function renderProgressBlock(snapshot) {
+function renderCushionStatusBlock(snapshot) {
+  const moodState = determineFinancialMoodState(getAppState());
+  const statusText = getFinancialMoodStatusText(moodState);
   const methodHint = snapshot.cushion.calculationMethod === CUSHION_CALCULATION_METHODS.INCOME_PERCENT
     ? `<p class="cushion-overview__hint">Доходы текущего периода: ${formatAmount(snapshot.periodIncomesTotal)}</p>`
     : '';
@@ -173,29 +179,12 @@ function renderProgressBlock(snapshot) {
       <p class="cushion-overview__value">${formatAmount(snapshot.targetAmount)}</p>
       <p class="cushion-overview__hint">Минимальный безопасный уровень · ${escapeHtml(getCushionMethodLabel(snapshot.cushion.calculationMethod))}</p>
       ${methodHint}
-      <div class="cushion-progress">
-        <div class="cushion-progress__header">
-          <span>Баланс к уровню: ${formatAmount(snapshot.currentCoverage)}</span>
-          <span>${Math.round(snapshot.achievementPercent)}%</span>
-        </div>
-        <div
-          class="cushion-progress__bar"
-          role="progressbar"
-          aria-valuemin="0"
-          aria-valuemax="100"
-          aria-valuenow="${Math.round(snapshot.achievementPercent)}"
-          aria-label="Соотношение баланса периода и безопасного уровня"
-        >
-          <span class="cushion-progress__fill" style="width: ${Math.min(100, snapshot.achievementPercent)}%"></span>
-        </div>
-        <p class="cushion-progress__remainder">
-          ${snapshot.periodBalance < 0
-    ? 'Баланс периода отрицательный'
-    : snapshot.remainderToGoal > 0
-      ? `До безопасного уровня не хватает: ${formatAmount(snapshot.remainderToGoal)}`
-      : 'Минимальный безопасный уровень соблюдён'}
-        </p>
-      </div>
+      <p class="cushion-overview__status">
+        <span class="cushion-overview__state cushion-overview__state--${escapeHtml(moodState)}">
+          ${escapeHtml(getFinancialMoodStateLabel(moodState))}
+        </span>
+      </p>
+      <p class="cushion-overview__hint">${escapeHtml(statusText)}</p>
     </article>
   `;
 }

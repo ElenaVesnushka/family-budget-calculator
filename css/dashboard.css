@@ -206,6 +206,11 @@
   color: var(--color-text-secondary);
 }
 
+.dashboard-metric__state {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+}
+
 .dashboard-metric--income .dashboard-metric__value {
   color: var(--color-income);
 }
@@ -220,24 +225,6 @@
 
 .dashboard-metric--positive .dashboard-metric__value {
   color: var(--color-income);
-}
-
-.dashboard-progress {
-  margin-top: var(--space-3);
-}
-
-.dashboard-progress__bar {
-  height: 0.5rem;
-  background-color: var(--color-bg-subtle);
-  border-radius: var(--radius-full);
-  overflow: hidden;
-}
-
-.dashboard-progress__fill {
-  display: block;
-  height: 100%;
-  background-color: var(--color-accent);
-  border-radius: var(--radius-full);
 }
 
 .dashboard-card--reserve .dashboard-card__header {

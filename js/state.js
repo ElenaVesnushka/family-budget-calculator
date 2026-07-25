@@ -2274,7 +2274,6 @@ const MOOD_STATE_LABELS = {
 const STATE_PHRASE_GROUPS = {
   [FINANCIAL_MOOD_STATES.STABLE]: [
     FINANCIAL_MOOD_PHRASE_GROUPS.POSITIVE,
-    FINANCIAL_MOOD_PHRASE_GROUPS.NEUTRAL,
   ],
   [FINANCIAL_MOOD_STATES.ACCEPTABLE]: [
     FINANCIAL_MOOD_PHRASE_GROUPS.NEUTRAL,
@@ -2287,22 +2286,26 @@ const STATE_PHRASE_GROUPS = {
   ],
 };
 
+/** Базовые тексты состояний: баланс периода ↔ финансовая подушка. */
+const MOOD_STATE_DEFAULT_TEXTS = {
+  [FINANCIAL_MOOD_STATES.STABLE]: 'Финансовая модель сбалансирована.',
+  [FINANCIAL_MOOD_STATES.ACCEPTABLE]: 'Достигнут минимальный безопасный уровень.',
+  [FINANCIAL_MOOD_STATES.ALERT]: 'Финансовая модель даёт сбой. Рекомендуется увеличить доходы или уменьшить расходы.',
+  [FINANCIAL_MOOD_STATES.CRITICAL]: 'Расходы превышают доходы. Финансовая подушка не достигнута.',
+};
+
 const SYSTEM_MOOD_PHRASES = {
   [FINANCIAL_MOOD_PHRASE_GROUPS.POSITIVE]: [
-    'Финансовое состояние выглядит устойчивым.',
-    'Баланс периода выше безопасного уровня.',
+    MOOD_STATE_DEFAULT_TEXTS[FINANCIAL_MOOD_STATES.STABLE],
   ],
   [FINANCIAL_MOOD_PHRASE_GROUPS.NEUTRAL]: [
-    'Ситуация спокойная. Можно продолжать в привычном ритме.',
-    'Баланс периода на границе безопасного уровня.',
+    MOOD_STATE_DEFAULT_TEXTS[FINANCIAL_MOOD_STATES.ACCEPTABLE],
   ],
   [FINANCIAL_MOOD_PHRASE_GROUPS.WARNING]: [
-    'Баланс периода положительный, но ниже безопасного уровня.',
-    'Стоит внимательнее следить за доходами и расходами.',
+    MOOD_STATE_DEFAULT_TEXTS[FINANCIAL_MOOD_STATES.ALERT],
   ],
   [FINANCIAL_MOOD_PHRASE_GROUPS.CRITICAL]: [
-    'Доходы периода не покрывают расходы периода.',
-    'Полезно пересмотреть расходы или размер финансовой подушки.',
+    MOOD_STATE_DEFAULT_TEXTS[FINANCIAL_MOOD_STATES.CRITICAL],
   ],
 };
 
@@ -2978,7 +2981,8 @@ export function calculateCushionAmount(state, referenceDate = new Date()) {
 
 /**
  * Сводка по балансу периода, средствам и финансовой подушке.
- * Подушка сравнивается с балансом периода, а не вычитается из активов.
+ * Подушка = минимальный безопасный уровень; сравнивается с балансом периода
+ * и не вычитается из активов. Проценты покрытия не используются.
  */
 export function calculateFinancialReserveSnapshot(state, referenceDate = new Date()) {
   const cushion = normalizeFinancialCushion(state.financialCushion);
@@ -2990,33 +2994,12 @@ export function calculateFinancialReserveSnapshot(state, referenceDate = new Dat
   const periodExpensesTotal = calculateCurrentPeriodExpensesTotal(state, referenceDate);
   const periodBalance = periodIncomesTotal - periodExpensesTotal;
 
-  let achievementPercent = 0;
-  let currentCoverage = 0;
-  let remainderToGoal = 0;
-
-  if (!cushion.enabled) {
-    achievementPercent = 0;
-  } else if (targetAmount <= 0) {
-    achievementPercent = periodBalance >= 0 ? 100 : 0;
-    currentCoverage = Math.max(0, periodBalance);
-  } else if (periodBalance < 0) {
-    achievementPercent = 0;
-    remainderToGoal = targetAmount - periodBalance;
-  } else {
-    currentCoverage = Math.min(periodBalance, targetAmount);
-    achievementPercent = Math.min(100, (periodBalance / targetAmount) * 100);
-    remainderToGoal = Math.max(0, targetAmount - periodBalance);
-  }
-
   return {
     cushion,
     currentFunds,
     reserveFunds,
     totalFunds,
     targetAmount,
-    currentCoverage,
-    achievementPercent,
-    remainderToGoal,
     periodIncomesTotal,
     periodExpensesTotal,
     periodBalance,
@@ -3062,6 +3045,13 @@ export function determineFinancialMoodGroup(state, referenceDate = new Date()) {
 }
 
 /**
+ * Базовый текст состояния финансового настроения.
+ */
+export function getFinancialMoodStatusText(moodState) {
+  return MOOD_STATE_DEFAULT_TEXTS[moodState] ?? '';
+}
+
+/**
  * Выбирает фразу финансового настроения из пользовательских или системных фраз.
  */
 export function pickFinancialMoodPhrase(state, referenceDate = new Date()) {
@@ -3079,15 +3069,7 @@ export function pickFinancialMoodPhrase(state, referenceDate = new Date()) {
     }
   }
 
-  for (const group of groups) {
-    const systemPhrases = SYSTEM_MOOD_PHRASES[group] ?? [];
-
-    if (systemPhrases.length > 0) {
-      return systemPhrases[Math.floor(Math.random() * systemPhrases.length)];
-    }
-  }
-
-  return null;
+  return getFinancialMoodStatusText(moodState) || null;
 }
 
 /**
