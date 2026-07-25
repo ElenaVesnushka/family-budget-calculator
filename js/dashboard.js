@@ -27,6 +27,7 @@ const INCOME_TYPE_LABELS = {
 let stateUpdateListenerAttached = false;
 let lastMoodState = null;
 let lastMoodPhrase = null;
+let lastMoodPhrasesKey = null;
 
 /**
  * Возвращает контейнер главного экрана.
@@ -92,9 +93,11 @@ function renderMood(region) {
 
   const state = getAppState();
   const moodState = determineFinancialMoodState(state);
+  const moodPhrasesKey = JSON.stringify(state.settings?.moodPhrases ?? {});
 
-  if (moodState !== lastMoodState) {
+  if (moodState !== lastMoodState || moodPhrasesKey !== lastMoodPhrasesKey) {
     lastMoodState = moodState;
+    lastMoodPhrasesKey = moodPhrasesKey;
     lastMoodPhrase = pickFinancialMoodPhrase(state);
   }
 

@@ -31,6 +31,7 @@ import { initTemplates } from './templates.js';
 import { initAssets } from './assets.js';
 import { initCushion, syncReserveWarnings } from './cushion.js';
 import { initReports } from './reports.js';
+import { initSettings } from './settings.js';
 
 export {
   getAppState,
@@ -79,6 +80,10 @@ function bootstrap() {
         initReports();
       }
 
+      if (sectionId === 'settings') {
+        initSettings();
+      }
+
       if (sectionId === 'cushion') {
         initCushion();
       }
@@ -97,6 +102,7 @@ function bootstrap() {
   initAssets();
   initCushion();
   initReports();
+  initSettings();
   syncReserveWarnings();
 
   applyTheme(appState.settings.theme);

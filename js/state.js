@@ -290,6 +290,150 @@ export function getAvailableExpenseArticles(state) {
 }
 
 /**
+ * Все статьи расходов, включая скрытые.
+ */
+export function getAllExpenseArticles(state) {
+  return state.references?.expenseArticles ?? [];
+}
+
+/**
+ * Статья используется в расходах, плановых расходах, лимитах или шаблонах.
+ */
+export function isExpenseArticleInUse(state, articleId) {
+  if (!articleId) {
+    return false;
+  }
+
+  const inExpenses = (state.currentBudget?.expenses ?? []).some((item) => item.articleId === articleId);
+  const inPlanned = (state.currentBudget?.plannedExpenses ?? []).some((item) => item.articleId === articleId);
+  const inLimits = (state.currentBudget?.limits ?? []).some(
+    (item) => item.limitType === LIMIT_TYPES.ARTICLE && item.targetId === articleId,
+  );
+  const inTemplates = (state.templates ?? []).some((template) => (
+    template.expense?.articleId === articleId
+    || template.plannedExpense?.articleId === articleId
+  ));
+
+  return inExpenses || inPlanned || inLimits || inTemplates;
+}
+
+/**
+ * Валидация пользовательской статьи расходов.
+ */
+export function validateExpenseArticlePayload(payload, state, existingArticleId = null) {
+  const errors = {};
+  const name = String(payload.name ?? '').trim();
+
+  if (!name) {
+    errors.name = 'Укажите название статьи.';
+  } else if (name.length > 80) {
+    errors.name = 'Название не должно превышать 80 символов.';
+  } else {
+    const duplicate = getAllExpenseArticles(state).some((article) => (
+      article.id !== existingArticleId
+      && String(article.name ?? '').trim().toLowerCase() === name.toLowerCase()
+    ));
+
+    if (duplicate) {
+      errors.name = 'Статья с таким названием уже существует.';
+    }
+  }
+
+  return errors;
+}
+
+/**
+ * Создаёт пользовательскую статью расходов.
+ */
+export function buildExpenseArticleFromPayload(payload, now = new Date().toISOString()) {
+  return {
+    ...createExpenseArticleShape(),
+    id: generateId('article'),
+    name: String(payload.name ?? '').trim(),
+    isSystem: false,
+    isStandard: false,
+    isHidden: false,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+/**
+ * Системные фразы финансового настроения (только для просмотра).
+ */
+export function getSystemMoodPhrases() {
+  return structuredClone(SYSTEM_MOOD_PHRASES);
+}
+
+/**
+ * Подписи групп фраз настроения.
+ */
+export function getMoodPhraseGroupLabel(group) {
+  const labels = {
+    [FINANCIAL_MOOD_PHRASE_GROUPS.POSITIVE]: 'Положительное (Стабильное)',
+    [FINANCIAL_MOOD_PHRASE_GROUPS.NEUTRAL]: 'Нейтральное (Допустимое)',
+    [FINANCIAL_MOOD_PHRASE_GROUPS.WARNING]: 'Предупреждение (Требует внимания)',
+    [FINANCIAL_MOOD_PHRASE_GROUPS.CRITICAL]: 'Критическое',
+  };
+
+  return labels[group] ?? group;
+}
+
+/**
+ * Валидация дня месяца (1–31).
+ */
+export function validateDayOfMonth(value, fieldName = 'day') {
+  const errors = {};
+  const day = Number(value);
+
+  if (!String(value ?? '').trim()) {
+    errors[fieldName] = 'Укажите день месяца.';
+  } else if (!Number.isInteger(day) || day < 1 || day > 31) {
+    errors[fieldName] = 'Укажите день от 1 до 31.';
+  }
+
+  return errors;
+}
+
+/**
+ * Нормализует пользовательские настройки.
+ */
+export function normalizeSettings(settings) {
+  const defaults = createDefaultSettings();
+
+  if (!settings || typeof settings !== 'object') {
+    return structuredClone(defaults);
+  }
+
+  const periodDay = Number(settings.financialPeriodStartDay);
+  const snapshotDay = Number(settings.monthlySnapshotDay);
+  const theme = Object.values(THEMES).includes(settings.theme)
+    ? settings.theme
+    : defaults.theme;
+
+  return {
+    financialPeriodStartDay: Number.isInteger(periodDay) && periodDay >= 1 && periodDay <= 31
+      ? periodDay
+      : defaults.financialPeriodStartDay,
+    theme,
+    monthlySnapshotDay: Number.isInteger(snapshotDay) && snapshotDay >= 1 && snapshotDay <= 31
+      ? snapshotDay
+      : defaults.monthlySnapshotDay,
+    moodPhrases: normalizeMoodPhrases(settings.moodPhrases),
+  };
+}
+
+/**
+ * Сбрасывает пользовательские параметры, не трогая операции и историю.
+ */
+export function createDefaultUserSettingsState() {
+  return {
+    settings: createDefaultSettings(),
+    financialCushion: createDefaultFinancialCushion(),
+  };
+}
+
+/**
  * Название элемента справочника по идентификатору.
  */
 export function getReferenceName(items, id) {
@@ -2873,12 +3017,7 @@ export function normalizeAppState(rawState) {
       budgetId: migrated.meta?.budgetId ?? defaults.meta.budgetId,
       createdAt: migrated.meta?.createdAt ?? defaults.meta.createdAt,
     },
-    settings: {
-      ...deepMerge(defaults.settings, migrated.settings),
-      moodPhrases: normalizeMoodPhrases(
-        migrated.settings?.moodPhrases ?? defaults.settings.moodPhrases,
-      ),
-    },
+    settings: normalizeSettings(migrated.settings),
     financialCushion: normalizeFinancialCushion(deepMerge(defaults.financialCushion, migrated.financialCushion)),
     references: mergeReferences(defaults.references, migrated.references),
     currentBudget: deepMerge(defaults.currentBudget, migrated.currentBudget),
