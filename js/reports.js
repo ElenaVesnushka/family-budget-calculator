@@ -353,20 +353,25 @@ function renderLimitsPanel(summary) {
 }
 
 function renderObservations(summary) {
+  const panel = workspace.querySelector('.reports-panel--observations');
   const region = workspace.querySelector('[data-reports-observations]');
 
-  if (!region) {
+  if (!panel || !region) {
     return;
   }
 
-  if (!summary.observations.length) {
-    region.innerHTML = '<p class="reports-empty">Пока недостаточно данных для финансовых наблюдений.</p>';
+  const observations = summary.observations ?? [];
+
+  if (!observations.length) {
+    panel.hidden = true;
+    region.replaceChildren();
     return;
   }
 
+  panel.hidden = false;
   region.innerHTML = `
     <ul class="reports-observations">
-      ${summary.observations.map((text) => `
+      ${observations.map((text) => `
         <li class="reports-observations__item">${escapeHtml(text)}</li>
       `).join('')}
     </ul>

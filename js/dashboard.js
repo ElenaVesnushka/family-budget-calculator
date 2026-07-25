@@ -4,6 +4,7 @@
 
 import { getAppState, isStateInitialized } from './state-service.js';
 import {
+  buildFinancialObservations,
   calculateCurrentPeriodExpensesTotal,
   calculateCurrentPeriodIncomesTotal,
   calculateFinancialReserveSnapshot,
@@ -82,6 +83,7 @@ function renderDashboard() {
   renderCard(region, 'expenses', renderExpensesContent);
   renderCard(region, 'cushion', renderCushionContent);
   renderRecentOperations(region);
+  renderFinancialObservations(region);
 }
 
 function renderMood(region) {
@@ -223,6 +225,33 @@ function collectRecentOperations(state, limit = RECENT_OPERATIONS_LIMIT) {
       return String(second.createdAt ?? '').localeCompare(String(first.createdAt ?? ''));
     })
     .slice(0, limit);
+}
+
+function renderFinancialObservations(region) {
+  const block = region.querySelector('[data-dashboard-observations]');
+  const list = region.querySelector('[data-dashboard-observations-list]');
+
+  if (!block || !list) {
+    return;
+  }
+
+  const observations = buildFinancialObservations(getAppState());
+
+  list.replaceChildren();
+
+  if (!observations.length) {
+    block.hidden = true;
+    return;
+  }
+
+  observations.forEach((text) => {
+    const item = document.createElement('li');
+    item.className = 'dashboard-observations__item';
+    item.textContent = text;
+    list.append(item);
+  });
+
+  block.hidden = false;
 }
 
 function renderRecentOperations(region) {

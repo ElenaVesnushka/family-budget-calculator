@@ -2520,66 +2520,201 @@ function buildShareBreakdown(groups, total) {
     .sort((first, second) => second.amount - first.amount);
 }
 
+/** Порог «значительного» улучшения баланса периода относительно прошлого. */
+const SIGNIFICANT_BALANCE_IMPROVEMENT_RATIO = 0.25;
+const SIGNIFICANT_BALANCE_IMPROVEMENT_MIN = 1000;
+
 /**
- * Информационные финансовые наблюдения по данным отчёта (раздел 15, 17 ТЗ).
- * Не являются уведомлениями и не требуют действия пользователя.
+ * Информационные финансовые наблюдения (разделы 15, 17 ТЗ).
+ * Формируются автоматически только по фактическим подтверждённым данным.
+ * Не являются уведомлениями, не требуют действий и не меняют показатели.
+ *
+ * @param {object} state
+ * @param {{ referenceDate?: Date, start?: Date, end?: Date }} [options]
+ * @returns {string[]}
  */
-export function buildFinancialObservations(summary) {
+export function buildFinancialObservations(state, options = {}) {
   const observations = [];
 
-  if (!summary) {
+  if (!state) {
     return observations;
   }
 
-  if (summary.periodBalance < 0) {
-    observations.push('Расходы выбранного периода превышают доходы периода.');
-  }
+  const referenceDate = options.referenceDate ?? new Date();
+  const startDay = state.settings?.financialPeriodStartDay ?? 1;
+  const currentBounds = options.start instanceof Date && options.end instanceof Date
+    ? { start: startOfDay(options.start), end: startOfDay(options.end) }
+    : getFinancialPeriodBounds(referenceDate, startDay);
 
-  if (summary.cushion.enabled && summary.cushionAmount > 0) {
-    if (summary.periodBalance < summary.cushionAmount && summary.periodBalance >= 0) {
-      observations.push('Баланс периода ниже финансовой подушки.');
-    } else if (summary.periodBalance >= summary.cushionAmount) {
-      observations.push('Баланс периода не ниже финансовой подушки.');
+  const previousBounds = shiftPeriodBounds(currentBounds.start, currentBounds.end);
+
+  const incomes = getIncomesInDateRange(state, currentBounds.start, currentBounds.end);
+  const expenses = getExpensesInDateRange(state, currentBounds.start, currentBounds.end);
+  const previousIncomes = getIncomesInDateRange(state, previousBounds.start, previousBounds.end);
+  const previousExpenses = getExpensesInDateRange(state, previousBounds.start, previousBounds.end);
+
+  const incomesTotal = sumOperationAmounts(incomes);
+  const expensesTotal = sumOperationAmounts(expenses);
+  const previousIncomesTotal = sumOperationAmounts(previousIncomes);
+  const previousExpensesTotal = sumOperationAmounts(previousExpenses);
+  const periodBalance = incomesTotal - expensesTotal;
+  const previousPeriodBalance = previousIncomesTotal - previousExpensesTotal;
+  const hasPreviousPeriodData = previousIncomes.length > 0 || previousExpenses.length > 0;
+
+  if (hasPreviousPeriodData) {
+    if (incomesTotal > previousIncomesTotal) {
+      observations.push('Доходы выросли по сравнению с предыдущим периодом.');
+    } else if (incomesTotal < previousIncomesTotal) {
+      observations.push('Доходы снизились по сравнению с предыдущим периодом.');
+    }
+
+    if (expensesTotal < previousExpensesTotal) {
+      observations.push('Расходы снизились по сравнению с предыдущим периодом.');
+    } else if (expensesTotal > previousExpensesTotal) {
+      observations.push('Расходы выросли по сравнению с предыдущим периодом.');
     }
   }
 
-  if (summary.previous) {
-    if (summary.incomesTotal > summary.previous.incomesTotal) {
-      observations.push('Доходы периода выше, чем в предыдущем сравнимом периоде.');
-    } else if (summary.incomesTotal < summary.previous.incomesTotal) {
-      observations.push('Доходы периода ниже, чем в предыдущем сравнимом периоде.');
-    }
+  const topArticle = findTopExpenseArticle(state, expenses);
 
-    if (summary.expensesTotal > summary.previous.expensesTotal) {
-      observations.push('Расходы периода выше, чем в предыдущем сравнимом периоде.');
-    } else if (summary.expensesTotal < summary.previous.expensesTotal) {
-      observations.push('Расходы периода ниже, чем в предыдущем сравнимом периоде.');
+  if (topArticle) {
+    observations.push(`Самая крупная статья расходов — «${topArticle.name}».`);
+  }
+
+  const topIncomeSource = findTopIncomeSource(incomes);
+
+  if (topIncomeSource) {
+    observations.push(`Наибольший источник доходов — «${topIncomeSource}».`);
+  }
+
+  const totalFunds = calculateTotalFunds(state);
+  const previousTotalFunds = getLatestSnapshotTotalFunds(state);
+
+  if (previousTotalFunds !== null) {
+    if (totalFunds > previousTotalFunds) {
+      observations.push('Общие средства увеличились.');
+    } else if (totalFunds < previousTotalFunds) {
+      observations.push('Общие средства уменьшились.');
     }
   }
 
-  const topCategory = summary.expensesByCategory?.[0];
+  const cushion = normalizeFinancialCushion(state.financialCushion);
+  const cushionAmount = calculateCushionAmount(state, currentBounds.end);
 
-  if (topCategory && summary.expensesTotal > 0 && topCategory.sharePercent >= 40) {
-    observations.push(
-      `Наибольшая доля расходов приходится на категорию «${topCategory.name}» (${topCategory.sharePercent}%).`,
+  if (cushion.enabled && cushionAmount > 0 && periodBalance >= cushionAmount) {
+    observations.push('Финансовая подушка полностью обеспечена.');
+  }
+
+  if (hasPreviousPeriodData) {
+    const balanceDelta = periodBalance - previousPeriodBalance;
+    const significantThreshold = Math.max(
+      Math.abs(previousPeriodBalance) * SIGNIFICANT_BALANCE_IMPROVEMENT_RATIO,
+      SIGNIFICANT_BALANCE_IMPROVEMENT_MIN,
     );
-  }
 
-  if (summary.limits?.some((limit) => limit.overspend > 0)) {
-    observations.push('За выбранный период есть лимиты с перерасходом.');
-  }
-
-  if (summary.totalFunds > 0) {
-    observations.push(
-      `Общие средства составляют ${new Intl.NumberFormat('ru-RU', {
-        style: 'currency',
-        currency: 'RUB',
-        maximumFractionDigits: 0,
-      }).format(summary.totalFunds)} и учитываются отдельно от баланса периода.`,
-    );
+    if (
+      balanceDelta >= significantThreshold
+      || (previousPeriodBalance < 0 && periodBalance >= 0 && balanceDelta > 0)
+    ) {
+      observations.push('Баланс периода значительно улучшился.');
+    } else if (periodBalance < previousPeriodBalance) {
+      observations.push('Баланс периода снизился относительно прошлого периода.');
+    }
   }
 
   return observations;
+}
+
+function findTopExpenseArticle(state, expenses) {
+  if (!expenses.length) {
+    return null;
+  }
+
+  const articleTotals = {};
+
+  expenses.forEach((expense) => {
+    const articleId = expense.articleId;
+
+    if (!articleId) {
+      return;
+    }
+
+    articleTotals[articleId] = (articleTotals[articleId] ?? 0) + Number(expense.amount ?? 0);
+  });
+
+  const topEntry = Object.entries(articleTotals)
+    .sort((first, second) => second[1] - first[1])[0];
+
+  if (!topEntry || topEntry[1] <= 0) {
+    return null;
+  }
+
+  const [articleId, amount] = topEntry;
+  const name = getReferenceName(getAllExpenseArticles(state), articleId);
+
+  if (!name || name === '—') {
+    return null;
+  }
+
+  return { id: articleId, name, amount };
+}
+
+function findTopIncomeSource(incomes) {
+  if (!incomes.length) {
+    return null;
+  }
+
+  const sourceTotals = {};
+
+  incomes.forEach((income) => {
+    const source = String(income.name ?? '').trim() || 'Без названия';
+    sourceTotals[source] = (sourceTotals[source] ?? 0) + Number(income.amount ?? 0);
+  });
+
+  const topEntry = Object.entries(sourceTotals)
+    .sort((first, second) => second[1] - first[1])[0];
+
+  if (!topEntry || topEntry[1] <= 0) {
+    return null;
+  }
+
+  return topEntry[0];
+}
+
+/**
+ * Общая сумма из последнего ежемесячного снимка средств (если есть).
+ */
+function getLatestSnapshotTotalFunds(state) {
+  const snapshots = state.myAssets?.snapshots ?? [];
+
+  if (!Array.isArray(snapshots) || snapshots.length === 0) {
+    return null;
+  }
+
+  const latest = [...snapshots]
+    .filter((item) => item && typeof item === 'object')
+    .sort((first, second) => String(second.date ?? '').localeCompare(String(first.date ?? '')))[0];
+
+  if (!latest) {
+    return null;
+  }
+
+  const directTotal = Number(latest.totalAmount ?? latest.totalFunds ?? latest.total);
+
+  if (Number.isFinite(directTotal)) {
+    return directTotal;
+  }
+
+  if (!Array.isArray(latest.accounts)) {
+    return null;
+  }
+
+  const accountsTotal = latest.accounts.reduce(
+    (sum, account) => sum + Number(account.balance ?? account.amount ?? 0),
+    0,
+  );
+
+  return Number.isFinite(accountsTotal) ? accountsTotal : null;
 }
 
 /**
@@ -2684,7 +2819,11 @@ export function buildReportSummary(state, options = {}) {
     },
   };
 
-  summary.observations = buildFinancialObservations(summary);
+  summary.observations = buildFinancialObservations(state, {
+    referenceDate: options.referenceDate,
+    start: bounds.start,
+    end: bounds.end,
+  });
 
   return summary;
 }
