@@ -227,7 +227,7 @@ function renderGeneralSettings() {
         <p class="form-field__error" data-error-for="financialPeriodStartDay" hidden></p>
       </div>
       <div class="form-field">
-        <label class="form-field__label" for="settings-snapshot-day">День ежемесячного снимка средств</label>
+        <label class="form-field__label" for="settings-snapshot-day">День ежемесячного снимка денежных средств</label>
         <input class="form-field__input" type="number" id="settings-snapshot-day" name="monthlySnapshotDay" min="1" max="31" step="1" required value="${settings.monthlySnapshotDay}">
         <p class="form-field__error" data-error-for="monthlySnapshotDay" hidden></p>
       </div>
@@ -447,7 +447,7 @@ function renderResetBlock() {
 
   region.innerHTML = `
     <h3 class="settings-block__title">Сброс настроек</h3>
-    <p class="settings-block__intro">Восстанавливает параметры по умолчанию. Не удаляет операции, шаблоны, историю средств и отчёты.</p>
+    <p class="settings-block__intro">Восстанавливает параметры по умолчанию. Не удаляет операции, шаблоны, историю денежных средств и отчёты.</p>
     <button type="button" class="btn btn--secondary" data-action="reset-settings">Сбросить настройки</button>
   `;
 }
@@ -819,7 +819,7 @@ function handleDeletePhrase(group, phraseIndex) {
 
 function handleResetSettings() {
   const confirmed = window.confirm(
-    'Сбросить настройки по умолчанию? Операции, шаблоны и история средств не будут удалены.',
+    'Сбросить настройки по умолчанию? Операции, шаблоны и история денежных средств не будут удалены.',
   );
 
   if (!confirmed) {

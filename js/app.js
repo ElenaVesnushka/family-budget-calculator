@@ -29,7 +29,7 @@ import { initExpenses } from './expenses.js';
 import { initLimits, syncLimitWarnings } from './limits.js';
 import { initPlannedExpenses, syncPlannedExpenseReminders } from './planned-expenses.js';
 import { initTemplates } from './templates.js';
-import { initAssets, syncAssetsSnapshotReminders } from './assets.js?v=20260725-14';
+import { initAssets, syncAssetsSnapshotReminders } from './assets.js?v=20260725-16';
 import { initCushion, syncReserveWarnings } from './cushion.js';
 import { initReports } from './reports.js';
 import { initSettings } from './settings.js';

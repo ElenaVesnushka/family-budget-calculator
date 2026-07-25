@@ -2018,7 +2018,7 @@ const ACCOUNT_TYPE_LABELS = {
 };
 
 const ACCOUNT_PURPOSE_LABELS = {
-  [ACCOUNT_PURPOSES.CURRENT]: 'Текущие средства',
+  [ACCOUNT_PURPOSES.CURRENT]: 'Текущие денежные средства',
   [ACCOUNT_PURPOSES.RESERVE]: 'Финансовые запасы',
 };
 
@@ -2077,13 +2077,13 @@ export function validateAccountPayload(payload) {
   }
 
   if (!accountType) {
-    errors.accountType = 'Выберите тип средства.';
+    errors.accountType = 'Выберите тип денежных средств.';
   } else if (!ACCOUNT_TYPE_VALUES.has(accountType)) {
     errors.accountType = 'Выберите тип из списка.';
   }
 
   if (!purpose) {
-    errors.purpose = 'Выберите назначение средства.';
+    errors.purpose = 'Выберите назначение денежных средств.';
   } else if (!ACCOUNT_PURPOSE_VALUES.has(purpose)) {
     errors.purpose = 'Выберите назначение из списка.';
   }
@@ -2599,9 +2599,9 @@ export function buildFinancialObservations(state, options = {}) {
 
   if (previousTotalFunds !== null) {
     if (totalFunds > previousTotalFunds) {
-      observations.push('Общие средства увеличились.');
+      observations.push('Общая сумма денежных средств увеличилась.');
     } else if (totalFunds < previousTotalFunds) {
-      observations.push('Общие средства уменьшились.');
+      observations.push('Общая сумма денежных средств уменьшилась.');
     }
   }
 

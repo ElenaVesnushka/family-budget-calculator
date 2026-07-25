@@ -131,7 +131,7 @@ function renderMyAssetsContent() {
   return `
     <div class="dashboard-metric">
       <p class="dashboard-metric__value">${formatAmount(snapshot.totalFunds)}</p>
-      <p class="dashboard-metric__hint">Общие средства</p>
+      <p class="dashboard-metric__hint">Общая сумма денежных средств</p>
     </div>
   `;
 }

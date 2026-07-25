@@ -28,6 +28,7 @@ import {
 
 const SNAPSHOT_REMINDER_PREFIX = 'reminder-assets-snapshot';
 const SNAPSHOT_REMINDER_ID = 'reminder-assets-snapshot-due';
+const VISIBLE_SNAPSHOTS_LIMIT = 3;
 
 const WORKSPACE_ID = 'assets-workspace';
 
@@ -40,13 +41,15 @@ const ACCOUNT_TYPE_OPTIONS = [
 ];
 
 const ACCOUNT_PURPOSE_OPTIONS = [
-  { value: ACCOUNT_PURPOSES.CURRENT, label: 'Текущие средства' },
+  { value: ACCOUNT_PURPOSES.CURRENT, label: 'Текущие денежные средства' },
   { value: ACCOUNT_PURPOSES.RESERVE, label: 'Финансовые запасы' },
 ];
 
 let workspace = null;
 let stateUpdateListenerAttached = false;
 let showDisabled = true;
+let selectedCompareFirstDate = null;
+let selectedCompareSecondDate = null;
 
 function getWorkspace() {
   return document.getElementById(WORKSPACE_ID) ?? getSectionRegion('assets');
@@ -99,24 +102,48 @@ function createLayout() {
   container.className = 'assets';
 
   container.innerHTML = `
-    <div class="assets__summary" data-assets-summary role="region" aria-label="Сводка по средствам"></div>
+    <div class="assets__summary" data-assets-summary role="region" aria-label="Сводка по денежным средствам"></div>
     <div class="assets__toolbar">
       <button type="button" class="btn btn--primary" data-action="add-account">
-        Добавить средство
+        Добавить денежные средства
       </button>
       <button type="button" class="btn btn--secondary" data-action="create-snapshot">
-        Сделать снимок
+        Снимок денежных средств
       </button>
       <label class="assets__show-disabled">
         <input type="checkbox" id="assets-show-disabled" checked>
         Показывать отключённые
       </label>
     </div>
-    <div class="assets__list" data-assets-list role="region" aria-label="Список средств"></div>
+    <div class="assets__list" data-assets-list role="region" aria-label="Список денежных средств"></div>
     <section class="assets-snapshots" data-assets-snapshots aria-labelledby="assets-snapshots-title">
       <h3 class="assets-snapshots__title" id="assets-snapshots-title">История ежемесячных снимков</h3>
-      <p class="assets-snapshots__hint">Снимки фиксируют состояние средств на выбранную дату и не изменяются при дальнейших правках.</p>
+      <p class="assets-snapshots__hint">Снимки фиксируют состояние денежных средств на выбранную дату и не изменяются при дальнейших правках. В списке показываются три последних снимка.</p>
       <div class="assets-snapshots__list" data-assets-snapshots-list></div>
+    </section>
+    <section class="assets-compare" data-assets-compare aria-labelledby="assets-compare-title">
+      <h3 class="assets-compare__title" id="assets-compare-title">Сравнение снимков денежных средств</h3>
+      <p class="assets-compare__hint">Выберите две разные даты снимков, чтобы сравнить их между собой.</p>
+      <form class="assets-compare__form" data-assets-compare-form novalidate>
+        <div class="form-field assets-compare__field">
+          <label class="form-field__label" for="assets-compare-date-first">Первая дата</label>
+          <select class="form-field__input" id="assets-compare-date-first" name="firstDate" required>
+            <option value="">Выберите дату</option>
+          </select>
+          <p class="form-field__error" data-error-for="firstDate" hidden></p>
+        </div>
+        <div class="form-field assets-compare__field">
+          <label class="form-field__label" for="assets-compare-date-second">Вторая дата</label>
+          <select class="form-field__input" id="assets-compare-date-second" name="secondDate" required>
+            <option value="">Выберите дату</option>
+          </select>
+          <p class="form-field__error" data-error-for="secondDate" hidden></p>
+        </div>
+        <div class="form-actions assets-compare__actions">
+          <button type="submit" class="btn btn--primary" data-action="compare-snapshot">Сравнить</button>
+        </div>
+      </form>
+      <div class="assets-compare__result" data-assets-compare-result></div>
     </section>
   `;
 
@@ -127,6 +154,21 @@ function bindControls() {
   workspace.querySelector('#assets-show-disabled')?.addEventListener('change', (event) => {
     showDisabled = Boolean(event.target.checked);
     renderAssetsList();
+  });
+
+  const compareForm = workspace.querySelector('[data-assets-compare-form]');
+
+  compareForm?.addEventListener('submit', (event) => {
+    event.preventDefault();
+    handleCompareSnapshotSubmit(event.currentTarget);
+  });
+
+  compareForm?.querySelector('#assets-compare-date-first')?.addEventListener('change', () => {
+    syncCompareSelectOptions();
+  });
+
+  compareForm?.querySelector('#assets-compare-date-second')?.addEventListener('change', () => {
+    syncCompareSelectOptions();
   });
 }
 
@@ -184,6 +226,7 @@ function renderAssetsSection() {
   renderAssetsSummary();
   renderAssetsList();
   renderSnapshotsHistory();
+  renderSnapshotComparePanel();
 }
 
 /**
@@ -198,7 +241,7 @@ export function syncAssetsSnapshotReminders() {
     ? [{
       id: SNAPSHOT_REMINDER_ID,
       type: 'reminder',
-      message: 'Пора зафиксировать ежемесячный снимок средств. Создайте снимок в разделе «Мои средства».',
+      message: 'Пора зафиксировать ежемесячный снимок денежных средств. Создайте снимок в разделе «Мои средства».',
     }]
     : [];
 
@@ -237,9 +280,9 @@ function renderAssetsSummary() {
 
   summaryRegion.innerHTML = `
     <article class="assets-summary">
-      <div class="assets-summary__metrics" role="group" aria-label="Итоги по назначению средств">
+      <div class="assets-summary__metrics" role="group" aria-label="Итоги по назначению денежных средств">
         <div class="assets-summary__metric">
-          <p class="assets-summary__label">Текущие средства</p>
+          <p class="assets-summary__label">Текущие денежные средства</p>
           <p class="assets-summary__value assets-summary__value--secondary">${formatAmount(currentFunds)}</p>
         </div>
         <div class="assets-summary__metric">
@@ -247,9 +290,9 @@ function renderAssetsSummary() {
           <p class="assets-summary__value assets-summary__value--secondary">${formatAmount(reserveFunds)}</p>
         </div>
         <div class="assets-summary__metric assets-summary__metric--total">
-          <p class="assets-summary__label">Общие средства</p>
+          <p class="assets-summary__label">Общая сумма денежных средств</p>
           <p class="assets-summary__value">${formatAmount(totalFunds)}</p>
-          <p class="assets-summary__meta">Активных средств: ${activeCount}</p>
+          <p class="assets-summary__meta">Активных денежных средств: ${activeCount}</p>
           ${latestSnapshot ? `
             <p class="assets-summary__meta">
               К последнему снимку (${formatDisplayDate(latestSnapshot.date)}): ${formatChange(totalChange)}
@@ -258,7 +301,7 @@ function renderAssetsSummary() {
         </div>
       </div>
       ${typeRows ? `
-        <ul class="assets-summary__types" aria-label="Суммы по типам средств">
+        <ul class="assets-summary__types" aria-label="Суммы по типам денежных средств">
           ${typeRows}
         </ul>
       ` : ''}
@@ -296,8 +339,8 @@ function renderAssetsList() {
     const emptyState = document.createElement('p');
     emptyState.className = 'assets__empty';
     emptyState.textContent = showDisabled
-      ? 'Средства пока не добавлены. Нажмите «Добавить средство», чтобы учесть банковский счёт, карту, вклад или наличные.'
-      : 'Нет активных средств. Включите отображение отключённых или добавьте новое средство.';
+      ? 'Денежные средства пока не добавлены. Нажмите «Добавить денежные средства», чтобы учесть банковский счёт, карту, вклад или наличные.'
+      : 'Нет активных денежных средств. Включите отображение отключённых или добавьте новые денежные средства.';
     listRegion.append(emptyState);
     return;
   }
@@ -376,7 +419,7 @@ function openCreateSnapshotModal() {
   form.className = 'assets-form';
   form.noValidate = true;
   form.innerHTML = `
-    <p class="assets-form__intro">Снимок сохранит текущие остатки активных средств. Текущие суммы при этом не изменятся.</p>
+    <p class="assets-form__intro">Снимок сохранит текущие остатки активных денежных средств. Текущие суммы при этом не изменятся.</p>
     <div class="form-field">
       <label class="form-field__label" for="snapshot-date">Дата снимка</label>
       <input class="form-field__input" type="date" id="snapshot-date" name="date" required value="${formatIsoDate(new Date())}">
@@ -398,7 +441,7 @@ function openCreateSnapshotModal() {
   });
 
   openModal({
-    title: 'Ежемесячный снимок средств',
+    title: 'Снимок денежных средств',
     content: form,
   });
 }
@@ -409,7 +452,7 @@ function handleCreateSnapshotSubmit(form) {
   const date = String(new FormData(form).get('date') ?? '').trim();
 
   if (!date) {
-    showFormErrors(form, { date: 'Укажите дату снимка.' });
+    showFormErrors(form, { date: 'Укажите дату снимка денежных средств.' });
     return;
   }
 
@@ -461,7 +504,7 @@ function persistAssetsSnapshot(date, { replaced = false } = {}) {
   closeModal();
   showNotification({
     type: 'info',
-    message: replaced ? 'Снимок средств заменён.' : 'Снимок средств сохранён.',
+    message: replaced ? 'Снимок денежных средств заменён.' : 'Снимок денежных средств сохранён.',
   });
 }
 
@@ -474,21 +517,29 @@ function renderSnapshotsHistory() {
 
   const state = getAppState();
   const snapshots = getSortedAssetsSnapshots(state);
+  const visibleSnapshots = snapshots.slice(0, VISIBLE_SNAPSHOTS_LIMIT);
 
   listRegion.replaceChildren();
 
   if (snapshots.length === 0) {
     const empty = document.createElement('p');
     empty.className = 'assets__empty';
-    empty.textContent = 'Снимков пока нет. Нажмите «Сделать снимок», чтобы зафиксировать состояние средств.';
+    empty.textContent = 'Снимков пока нет. Нажмите «Снимок денежных средств», чтобы зафиксировать состояние.';
     listRegion.append(empty);
     return;
+  }
+
+  if (snapshots.length > VISIBLE_SNAPSHOTS_LIMIT) {
+    const note = document.createElement('p');
+    note.className = 'assets-snapshots__note';
+    note.textContent = `Показаны ${VISIBLE_SNAPSHOTS_LIMIT} последних снимка из ${snapshots.length}. Остальные доступны в блоке сравнения.`;
+    listRegion.append(note);
   }
 
   const list = document.createElement('ul');
   list.className = 'assets-snapshots__items';
 
-  snapshots.forEach((snapshot) => {
+  visibleSnapshots.forEach((snapshot) => {
     const previous = getPreviousAssetsSnapshot(state, snapshot);
     const totalChange = calculateSnapshotAmountChange(snapshot.totalAmount, previous?.totalAmount);
     const item = document.createElement('li');
@@ -500,7 +551,7 @@ function renderSnapshotsHistory() {
 
       return `
         <li class="assets-snapshots__account">
-          <span class="assets-snapshots__account-name">${escapeHtml(account.name || 'Средство')}</span>
+          <span class="assets-snapshots__account-name">${escapeHtml(account.name || 'Денежные средства')}</span>
           <span class="assets-snapshots__account-purpose">${escapeHtml(getAccountPurposeLabel(account.purpose))}</span>
           <span class="assets-snapshots__account-amount">${formatAmount(account.balance)}</span>
           <span class="assets-snapshots__account-change">${previous ? formatChange(change) : '—'}</span>
@@ -521,7 +572,7 @@ function renderSnapshotsHistory() {
         <ul class="assets-snapshots__accounts">
           ${accountsMarkup}
         </ul>
-      ` : '<p class="assets-snapshots__item-meta">Активных средств на дату снимка не было.</p>'}
+      ` : '<p class="assets-snapshots__item-meta">Активных денежных средств на дату снимка не было.</p>'}
     `;
 
     list.append(item);
@@ -530,10 +581,224 @@ function renderSnapshotsHistory() {
   listRegion.append(list);
 }
 
+function fillCompareSelect(select, snapshots, selectedValue, excludedValue) {
+  select.replaceChildren();
+
+  const placeholder = document.createElement('option');
+  placeholder.value = '';
+  placeholder.textContent = snapshots.length > 0 ? 'Выберите дату' : 'Нет сохранённых снимков';
+  select.append(placeholder);
+
+  snapshots.forEach((snapshot) => {
+    if (excludedValue && snapshot.date === excludedValue) {
+      return;
+    }
+
+    const option = document.createElement('option');
+    option.value = snapshot.date;
+    option.textContent = formatDisplayDate(snapshot.date);
+    select.append(option);
+  });
+
+  if (selectedValue && selectedValue !== excludedValue && snapshots.some((item) => item.date === selectedValue)) {
+    select.value = selectedValue;
+  } else {
+    select.value = '';
+  }
+
+  select.disabled = snapshots.length === 0;
+}
+
+function syncCompareSelectOptions() {
+  const form = workspace?.querySelector('[data-assets-compare-form]');
+  const firstSelect = form?.querySelector('#assets-compare-date-first');
+  const secondSelect = form?.querySelector('#assets-compare-date-second');
+
+  if (!form || !firstSelect || !secondSelect || !isStateInitialized()) {
+    return;
+  }
+
+  const snapshots = getSortedAssetsSnapshots(getAppState());
+  let firstValue = firstSelect.value || selectedCompareFirstDate || '';
+  let secondValue = secondSelect.value || selectedCompareSecondDate || '';
+
+  if (firstValue && firstValue === secondValue) {
+    secondValue = '';
+  }
+
+  fillCompareSelect(firstSelect, snapshots, firstValue, secondValue);
+  firstValue = firstSelect.value;
+  fillCompareSelect(secondSelect, snapshots, secondValue, firstValue);
+  secondValue = secondSelect.value;
+  fillCompareSelect(firstSelect, snapshots, firstValue, secondValue);
+
+  selectedCompareFirstDate = firstSelect.value || null;
+  selectedCompareSecondDate = secondSelect.value || null;
+
+  const canCompare = snapshots.length >= 2;
+  form.querySelector('[data-action="compare-snapshot"]').disabled = !canCompare;
+}
+
+function renderSnapshotComparePanel() {
+  const form = workspace?.querySelector('[data-assets-compare-form]');
+  const resultRegion = workspace?.querySelector('[data-assets-compare-result]');
+
+  if (!form || !resultRegion || !isStateInitialized()) {
+    return;
+  }
+
+  const snapshots = getSortedAssetsSnapshots(getAppState());
+  const firstSelect = form.querySelector('#assets-compare-date-first');
+  const secondSelect = form.querySelector('#assets-compare-date-second');
+
+  if (selectedCompareFirstDate && !snapshots.some((item) => item.date === selectedCompareFirstDate)) {
+    selectedCompareFirstDate = null;
+  }
+
+  if (selectedCompareSecondDate && !snapshots.some((item) => item.date === selectedCompareSecondDate)) {
+    selectedCompareSecondDate = null;
+  }
+
+  syncCompareSelectOptions();
+
+  if (firstSelect && selectedCompareFirstDate) {
+    firstSelect.value = selectedCompareFirstDate;
+  }
+
+  if (secondSelect && selectedCompareSecondDate) {
+    secondSelect.value = selectedCompareSecondDate;
+  }
+
+  syncCompareSelectOptions();
+
+  if (
+    selectedCompareFirstDate
+    && selectedCompareSecondDate
+    && selectedCompareFirstDate !== selectedCompareSecondDate
+  ) {
+    renderSnapshotCompareResult(selectedCompareFirstDate, selectedCompareSecondDate);
+    return;
+  }
+
+  resultRegion.innerHTML = snapshots.length >= 2
+    ? '<p class="assets-compare__empty">Выберите две разные даты снимков и нажмите «Сравнить».</p>'
+    : '<p class="assets-compare__empty">Для сравнения нужно минимум два снимка денежных средств.</p>';
+}
+
+function handleCompareSnapshotSubmit(form) {
+  clearFormErrors(form);
+
+  const firstDate = String(new FormData(form).get('firstDate') ?? '').trim();
+  const secondDate = String(new FormData(form).get('secondDate') ?? '').trim();
+  const errors = {};
+
+  if (!firstDate) {
+    errors.firstDate = 'Выберите первую дату.';
+  }
+
+  if (!secondDate) {
+    errors.secondDate = 'Выберите вторую дату.';
+  }
+
+  if (firstDate && secondDate && firstDate === secondDate) {
+    errors.secondDate = 'Выберите две разные даты снимков.';
+  }
+
+  if (Object.keys(errors).length > 0) {
+    showFormErrors(form, errors);
+    return;
+  }
+
+  const state = getAppState();
+  const firstSnapshot = findAssetsSnapshotByDate(state, firstDate);
+  const secondSnapshot = findAssetsSnapshotByDate(state, secondDate);
+
+  if (!firstSnapshot) {
+    showFormErrors(form, { firstDate: 'Снимок на выбранную дату не найден.' });
+    return;
+  }
+
+  if (!secondSnapshot) {
+    showFormErrors(form, { secondDate: 'Снимок на выбранную дату не найден.' });
+    return;
+  }
+
+  selectedCompareFirstDate = firstDate;
+  selectedCompareSecondDate = secondDate;
+  renderSnapshotCompareResult(firstDate, secondDate);
+}
+
+function renderSnapshotCompareResult(firstDate, secondDate) {
+  const resultRegion = workspace?.querySelector('[data-assets-compare-result]');
+
+  if (!resultRegion || !isStateInitialized()) {
+    return;
+  }
+
+  const state = getAppState();
+  const firstSnapshot = findAssetsSnapshotByDate(state, firstDate);
+  const secondSnapshot = findAssetsSnapshotByDate(state, secondDate);
+
+  if (!firstSnapshot || !secondSnapshot) {
+    resultRegion.innerHTML = '<p class="assets-compare__empty">Один из выбранных снимков не найден.</p>';
+    return;
+  }
+
+  const earlier = firstSnapshot.date <= secondSnapshot.date ? firstSnapshot : secondSnapshot;
+  const later = firstSnapshot.date <= secondSnapshot.date ? secondSnapshot : firstSnapshot;
+
+  const rows = [
+    {
+      label: 'Всего',
+      earlier: Number(earlier.totalAmount ?? 0),
+      later: Number(later.totalAmount ?? 0),
+    },
+    {
+      label: 'Текущие денежные средства',
+      earlier: Number(earlier.currentFunds ?? 0),
+      later: Number(later.currentFunds ?? 0),
+    },
+    {
+      label: 'Финансовые запасы',
+      earlier: Number(earlier.reserveFunds ?? 0),
+      later: Number(later.reserveFunds ?? 0),
+    },
+  ];
+
+  resultRegion.innerHTML = `
+    <div class="assets-compare__table-wrap">
+      <table class="assets-compare-table">
+        <thead>
+          <tr>
+            <th scope="col">Тип денежных средств</th>
+            <th scope="col">${formatDisplayDate(earlier.date)}</th>
+            <th scope="col">${formatDisplayDate(later.date)}</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map((row) => {
+    const change = calculateSnapshotAmountChange(row.later, row.earlier);
+    return `
+            <tr>
+              <th scope="row">${escapeHtml(row.label)}</th>
+              <td>${formatAmount(row.earlier)}</td>
+              <td>
+                <span class="assets-compare-table__amount">${formatAmount(row.later)}</span>
+                <span class="assets-compare-table__change">${formatChange(change)}</span>
+              </td>
+            </tr>
+          `;
+  }).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
 function openAddAccountModal() {
   const form = createAccountForm();
   const dialog = openModal({
-    title: 'Добавить средство',
+    title: 'Добавить денежные средства',
     content: form,
   });
 
@@ -551,14 +816,14 @@ function openEditAccountModal(accountId) {
   if (!account) {
     showNotification({
       type: 'info',
-      message: 'Средство не найдено.',
+      message: 'Денежные средства не найдены.',
     });
     return null;
   }
 
   const form = createAccountForm(account);
   const dialog = openModal({
-    title: 'Изменить средство',
+    title: 'Изменить денежные средства',
     content: form,
   });
 
@@ -593,7 +858,7 @@ function createAccountForm(account = null) {
       <p class="form-field__error" data-error-for="accountType" hidden></p>
     </div>
     <div class="form-field">
-      <label class="form-field__label" for="account-purpose">Назначение средства</label>
+      <label class="form-field__label" for="account-purpose">Назначение денежных средств</label>
       <select class="form-field__input" id="account-purpose" name="purpose" required>
         ${ACCOUNT_PURPOSE_OPTIONS.map(({ value, label }) => `
           <option value="${escapeHtml(value)}">${escapeHtml(label)}</option>
@@ -677,7 +942,7 @@ function handleAccountFormSubmit(form) {
     closeModal();
     showNotification({
       type: 'info',
-      message: 'Средство изменено.',
+      message: 'Денежные средства изменены.',
     });
     return;
   }
@@ -692,7 +957,7 @@ function handleAccountFormSubmit(form) {
   closeModal();
   showNotification({
     type: 'info',
-    message: 'Средство добавлено.',
+    message: 'Денежные средства добавлены.',
   });
 }
 
@@ -702,7 +967,7 @@ function handleToggleAccount(accountId) {
   if (!account) {
     showNotification({
       type: 'info',
-      message: 'Средство не найдено.',
+      message: 'Денежные средства не найдены.',
     });
     return;
   }
@@ -727,7 +992,7 @@ function handleToggleAccount(accountId) {
 
   showNotification({
     type: 'info',
-    message: nextHidden ? 'Средство отключено.' : 'Средство включено.',
+    message: nextHidden ? 'Денежные средства отключены.' : 'Денежные средства включены.',
   });
 }
 
@@ -737,12 +1002,14 @@ function handleDeleteAccount(accountId) {
   if (!account) {
     showNotification({
       type: 'info',
-      message: 'Средство не найдено.',
+      message: 'Денежные средства не найдены.',
     });
     return;
   }
 
-  const confirmed = window.confirm(`Удалить средство «${account.name}»? Ранее сохранённые снимки капитала не будут изменены.`);
+  const confirmed = window.confirm(
+    `Удалить денежные средства «${account.name}»? Ранее сохранённые снимки денежных средств не будут изменены.`,
+  );
 
   if (!confirmed) {
     return;
@@ -755,7 +1022,7 @@ function handleDeleteAccount(accountId) {
 
   showNotification({
     type: 'info',
-    message: 'Средство удалено.',
+    message: 'Денежные средства удалены.',
   });
 }
 
