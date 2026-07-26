@@ -31,7 +31,7 @@ import { initPlannedExpenses, syncPlannedExpenseReminders } from './planned-expe
 import { initTemplates } from './templates.js';
 import { initAssets, syncAssetsSnapshotReminders } from './assets.js?v=20260725-16';
 import { initCushion, syncReserveWarnings } from './cushion.js?v=20260725-20';
-import { initReports } from './reports.js';
+import { initReports } from './reports.js?v=20260726-01';
 import { initSettings } from './settings.js?v=20260725-18';
 
 let conditionalNotificationsListenerAttached = false;

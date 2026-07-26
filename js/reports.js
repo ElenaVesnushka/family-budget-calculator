@@ -340,12 +340,10 @@ function renderLimitsPanel(summary) {
           <div class="reports-limits__row">
             <span>Лимит: ${formatAmount(limit.limitAmount)}</span>
             <span>Факт: ${formatAmount(limit.actualSpent)}</span>
-            <span>Остаток: ${formatAmount(limit.remaining)}</span>
-            <span>${limit.usagePercent}%</span>
+            ${limit.overspend > 0
+    ? `<span class="reports-limits__overspend">Перерасход: ${formatAmount(limit.overspend)}</span>`
+    : `<span>Остаток: ${formatAmount(limit.remaining)}</span>`}
           </div>
-          ${limit.overspend > 0
-            ? `<p class="reports-limits__overspend">Перерасход: ${formatAmount(limit.overspend)}</p>`
-            : ''}
         </li>
       `).join('')}
     </ul>
