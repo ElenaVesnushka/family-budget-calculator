@@ -1,5 +1,6 @@
 /**
  * Компоненты оболочки: уведомления и модальные окна.
+ * Адаптив v1.1: ПК ≥1024 · планшет 768–1023 · телефон ≤767.
  */
 
 body.modal-open {
@@ -13,6 +14,7 @@ body.modal-open {
   font-size: var(--font-size-sm);
   line-height: var(--line-height-relaxed);
   box-shadow: var(--shadow-sm);
+  overflow-wrap: anywhere;
 }
 
 .notification + .notification {
@@ -30,8 +32,8 @@ body.modal-open {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
+  width: var(--touch-target-min);
+  height: var(--touch-target-min);
   border-radius: var(--radius-sm);
   font-size: var(--font-size-xl);
   line-height: 1;
@@ -90,6 +92,7 @@ body.modal-open {
   max-width: 32rem;
   max-height: calc(100vh - var(--space-8));
   overflow-y: auto;
+  overflow-x: clip;
   background-color: var(--color-bg-elevated);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
@@ -128,6 +131,7 @@ body.modal-open {
   flex: 1;
   font-size: var(--font-size-lg);
   line-height: var(--line-height-tight);
+  overflow-wrap: anywhere;
 }
 
 .modal__close {
@@ -135,8 +139,8 @@ body.modal-open {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 2rem;
-  height: 2rem;
+  width: var(--touch-target-min);
+  height: var(--touch-target-min);
   border-radius: var(--radius-md);
   font-size: var(--font-size-2xl);
   line-height: 1;
@@ -154,6 +158,8 @@ body.modal-open {
 .modal__body {
   padding: var(--space-6);
   min-height: 4rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .modal__body:empty {
@@ -164,6 +170,7 @@ body.modal-open {
 .modal__footer {
   display: flex;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: var(--space-3);
   padding: var(--space-4) var(--space-6);
   border-top: 1px solid var(--color-border);
@@ -173,21 +180,68 @@ body.modal-open {
   background-color: rgba(0, 0, 0, 0.65);
 }
 
-@media (prefers-reduced-motion: reduce) {
+/* Планшет: ≤1023 px */
+@media (max-width: 1023px) {
   .modal {
-    animation: none;
+    max-width: min(32rem, 100%);
+  }
+
+  .modal__header,
+  .modal__body,
+  .modal__footer {
+    padding-inline: var(--shell-padding-tablet);
   }
 }
 
-@media (max-width: 640px) {
+/* Телефон: ≤767 px */
+@media (max-width: 767px) {
   .modal-root {
     padding: var(--space-3);
     align-items: flex-end;
   }
 
   .modal {
+    max-width: 100%;
     max-height: calc(100vh - var(--space-6));
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
+  }
+
+  .modal__header,
+  .modal__body,
+  .modal__footer {
+    padding-inline: var(--shell-padding-phone);
+  }
+
+  .modal__footer {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .modal__footer .btn {
+    width: 100%;
+    min-height: var(--touch-target-min);
+  }
+
+  .modal__body :is(.form-field__input, select, textarea, input:not([type="checkbox"]):not([type="radio"])) {
+    width: 100%;
+    min-height: var(--touch-target-min);
+  }
+
+  .modal__body .form-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    gap: var(--space-2);
+  }
+
+  .modal__body .form-actions .btn {
+    width: 100%;
+    min-height: var(--touch-target-min);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal {
+    animation: none;
   }
 }

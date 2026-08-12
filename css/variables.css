@@ -147,6 +147,20 @@
   --nav-width: 15rem;
   --notifications-width: 20rem;
 
+  /* Адаптивный каркас v1.1: телефон ≤767, планшет 768–1023, ПК ≥1024 */
+  --breakpoint-phone-max: 767px;
+  --breakpoint-tablet-min: 768px;
+  --breakpoint-tablet-max: 1023px;
+  --breakpoint-desktop-min: 1024px;
+
+  --header-height-compact: 3.5rem;
+  --nav-width-tablet: 12rem;
+  --touch-target-min: 2.75rem;
+  --layout-content-max: 72rem;
+  --shell-padding-desktop: var(--space-8);
+  --shell-padding-tablet: var(--space-5);
+  --shell-padding-phone: var(--space-4);
+
   --transition-fast: 150ms ease;
   --transition-normal: 250ms ease;
 
