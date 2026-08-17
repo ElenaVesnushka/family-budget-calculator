@@ -1,6 +1,6 @@
 /**
  * Дизайн-токены и темы оформления.
- * Темы из ТЗ: светлая (по умолчанию), тёмная, японская.
+ * Темы: светлая (по умолчанию), тёмная, японская, водная жемчужина.
  */
 
 :root,
@@ -169,30 +169,71 @@
   --z-notifications: 30;
   --z-modal: 100;
 
-  /* Тема №1 «Водная жемчужина» — основа оформления главного экрана v1.1 */
-  --pearl-bg: #f3f6f5;
-  --pearl-bg-warm: #faf8f4;
-  --pearl-surface: #ffffff;
-  --pearl-surface-soft: #f8fbfa;
-  --pearl-seafoam: #d4ece8;
-  --pearl-seafoam-light: #e8f5f2;
-  --pearl-turquoise: #4a9e94;
-  --pearl-turquoise-deep: #357970;
-  --pearl-sand: #e8e2d8;
-  --pearl-sand-light: #f2ede6;
-  --pearl-coral: #c97b6f;
-  --pearl-coral-soft: #f5ebe8;
-  --pearl-coral-deep: #a8655a;
-  --pearl-blue-gray: #4a5d6a;
-  --pearl-blue-gray-muted: #6b7f8c;
-  --pearl-text: #243038;
-  --pearl-text-secondary: #5a6d78;
-  --pearl-text-muted: #8496a1;
-  --pearl-border: rgba(74, 158, 148, 0.14);
-  --pearl-border-strong: rgba(74, 94, 106, 0.18);
-  --pearl-shadow-sm: 0 2px 8px rgba(36, 48, 56, 0.05), 0 1px 2px rgba(74, 158, 148, 0.06);
-  --pearl-shadow-md: 0 8px 24px rgba(36, 48, 56, 0.07), 0 2px 6px rgba(74, 158, 148, 0.08);
-  --pearl-shadow-lg: 0 16px 40px rgba(36, 48, 56, 0.09), 0 4px 12px rgba(74, 158, 148, 0.1);
+  /* Тема «Водная жемчужина» — глубокая светлая морская палитра */
+  --pearl-font-display: "Iowan Old Style", Palatino, "Palatino Linotype", Georgia, "Times New Roman", serif;
+  --pearl-bg: #d9e4e0;
+  --pearl-bg-warm: #ebe4d8;
+  --pearl-surface: #fffdf9;
+  --pearl-surface-soft: #f2f6f4;
+  --pearl-seafoam: #9fc4be;
+  --pearl-seafoam-light: #d4e5e1;
+  --pearl-turquoise: #2a736c;
+  --pearl-turquoise-deep: #1b534e;
+  --pearl-sand: #cfc4b4;
+  --pearl-sand-light: #e8e0d3;
+  --pearl-coral: #b86a5d;
+  --pearl-coral-soft: #f0e2dd;
+  --pearl-coral-deep: #934f45;
+  --pearl-blue-gray: #3a4f5c;
+  --pearl-blue-gray-muted: #5d7380;
+  --pearl-navy: #1a2c36;
+  --pearl-text: #1a2c36;
+  --pearl-text-secondary: #4a5f6a;
+  --pearl-text-muted: #7a8d96;
+  --pearl-border: rgba(27, 83, 78, 0.16);
+  --pearl-border-strong: rgba(26, 44, 54, 0.2);
+  --pearl-shadow-sm: 0 4px 10px rgba(26, 44, 54, 0.06), 0 1px 2px rgba(27, 83, 78, 0.08);
+  --pearl-shadow-md: 0 12px 28px rgba(26, 44, 54, 0.1), 0 3px 8px rgba(27, 83, 78, 0.08);
+  --pearl-shadow-lg: 0 20px 44px rgba(26, 44, 54, 0.14), 0 6px 16px rgba(27, 83, 78, 0.1);
   --pearl-radius-pebble: 1.25rem;
   --pearl-radius-pebble-lg: 1.5rem;
+}
+
+[data-theme="pearl"] {
+  --color-bg: var(--pearl-bg);
+  --color-bg-elevated: var(--pearl-surface);
+  --color-bg-subtle: var(--pearl-surface-soft);
+  --color-border: var(--pearl-border);
+  --color-border-strong: var(--pearl-border-strong);
+
+  --color-text: var(--pearl-navy);
+  --color-text-secondary: var(--pearl-text-secondary);
+  --color-text-muted: var(--pearl-text-muted);
+
+  --color-accent: var(--pearl-turquoise);
+  --color-accent-hover: var(--pearl-turquoise-deep);
+  --color-accent-subtle: var(--pearl-seafoam-light);
+
+  --color-income: var(--pearl-turquoise);
+  --color-income-subtle: var(--pearl-seafoam-light);
+  --color-expense: var(--pearl-coral);
+  --color-expense-subtle: var(--pearl-coral-soft);
+  --color-warning: #8a7048;
+  --color-warning-subtle: var(--pearl-sand-light);
+  --color-alert: var(--pearl-coral-deep);
+  --color-alert-subtle: var(--pearl-coral-soft);
+  --color-info: var(--pearl-blue-gray);
+  --color-info-subtle: var(--pearl-seafoam-light);
+  --color-neutral: var(--pearl-blue-gray);
+  --color-neutral-subtle: var(--pearl-surface-soft);
+
+  --shadow-sm: var(--pearl-shadow-sm);
+  --shadow-md: var(--pearl-shadow-md);
+  --shadow-lg: var(--pearl-shadow-lg);
+
+  --radius-md: 0.75rem;
+  --radius-lg: var(--pearl-radius-pebble);
+  --radius-xl: var(--pearl-radius-pebble-lg);
+
+  --focus-ring: 0 0 0 3px rgba(42, 115, 108, 0.32);
 }

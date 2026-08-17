@@ -180,6 +180,22 @@ body.modal-open {
   background-color: rgba(0, 0, 0, 0.65);
 }
 
+[data-theme="pearl"] .modal-root {
+  background-color: rgba(26, 44, 54, 0.42);
+}
+
+[data-theme="pearl"] .modal {
+  border-color: var(--pearl-border);
+  border-radius: var(--pearl-radius-pebble-lg);
+  box-shadow: var(--pearl-shadow-lg);
+  background-color: var(--pearl-surface);
+}
+
+[data-theme="pearl"] .modal__title {
+  color: var(--pearl-navy);
+  letter-spacing: -0.02em;
+}
+
 /* Планшет: ≤1023 px */
 @media (max-width: 1023px) {
   .modal {

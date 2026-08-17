@@ -316,3 +316,13 @@
     min-height: 4.5rem;
   }
 }
+
+[data-theme="pearl"] .incomes-tabs__button--active {
+  color: var(--pearl-turquoise-deep);
+  background-color: var(--pearl-surface);
+  border-color: var(--pearl-border);
+}
+
+[data-theme="pearl"] .expected-incomes-table__amount {
+  color: var(--pearl-turquoise-deep);
+}

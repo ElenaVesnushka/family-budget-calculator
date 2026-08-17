@@ -142,3 +142,7 @@
     white-space: nowrap;
   }
 }
+
+[data-theme="pearl"] .templates-table {
+  background-color: var(--pearl-surface);
+}

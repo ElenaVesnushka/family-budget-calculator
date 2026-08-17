@@ -193,3 +193,20 @@
     width: 100%;
   }
 }
+
+[data-theme="pearl"] .btn {
+  border-radius: 0.9rem;
+}
+
+[data-theme="pearl"] .btn--primary {
+  background-color: var(--pearl-turquoise-deep);
+}
+
+[data-theme="pearl"] .form-field__input {
+  background-color: var(--pearl-surface);
+  border-radius: 0.85rem;
+}
+
+[data-theme="pearl"] .incomes-table__amount {
+  color: var(--pearl-turquoise-deep);
+}

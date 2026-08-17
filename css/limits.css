@@ -153,3 +153,7 @@
     width: 100%;
   }
 }
+
+[data-theme="pearl"] .limits-table__amount {
+  color: var(--pearl-navy);
+}

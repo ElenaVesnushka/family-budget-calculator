@@ -411,3 +411,107 @@
     scroll-behavior: auto;
   }
 }
+
+/* Водная жемчужина: оболочка. Только data-theme="pearl". */
+[data-theme="pearl"] body {
+  background-color: var(--pearl-bg);
+  background-image:
+    radial-gradient(ellipse 80% 45% at 8% -10%, rgba(255, 255, 255, 0.55), transparent 52%),
+    radial-gradient(ellipse 55% 40% at 92% 8%, rgba(159, 196, 190, 0.42), transparent 58%),
+    radial-gradient(ellipse 50% 35% at 78% 100%, rgba(207, 196, 180, 0.38), transparent 55%),
+    linear-gradient(168deg, #cfdcd8 0%, #e4ece9 28%, #efe8dc 62%, #d7e3df 100%);
+  background-attachment: fixed;
+}
+
+[data-theme="pearl"] .app-header {
+  background-color: color-mix(in srgb, var(--pearl-surface) 82%, transparent);
+  border-bottom-color: var(--pearl-border);
+  box-shadow: var(--pearl-shadow-sm);
+  backdrop-filter: blur(16px);
+}
+
+[data-theme="pearl"] .app-header__title {
+  color: var(--pearl-navy);
+  letter-spacing: -0.03em;
+}
+
+[data-theme="pearl"] .app-nav {
+  background-color: color-mix(in srgb, var(--pearl-surface) 76%, transparent);
+  border-right-color: var(--pearl-border);
+  backdrop-filter: blur(16px);
+}
+
+[data-theme="pearl"] .app-nav__link {
+  color: var(--pearl-blue-gray);
+  border-radius: var(--pearl-radius-pebble);
+}
+
+[data-theme="pearl"] .app-nav__link:hover {
+  background-color: var(--pearl-seafoam-light);
+  color: var(--pearl-navy);
+}
+
+[data-theme="pearl"] .app-nav__link[aria-current="page"] {
+  background-color: var(--pearl-seafoam-light);
+  color: var(--pearl-turquoise-deep);
+  border-color: transparent;
+  box-shadow: none;
+  font-weight: var(--font-weight-semibold);
+}
+
+[data-theme="pearl"] .app-section__title {
+  color: var(--pearl-navy);
+  letter-spacing: -0.03em;
+}
+
+[data-theme="pearl"] .app-section__workspace {
+  background-color: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+[data-theme="pearl"] .notifications {
+  background-color: color-mix(in srgb, var(--pearl-surface) 88%, transparent);
+  border-left-color: var(--pearl-border);
+}
+
+[data-theme="pearl"] :is(
+  .incomes-table,
+  .expenses-table,
+  .limits-table,
+  .assets-table,
+  .assets-summary,
+  .templates-table,
+  .expected-incomes-table,
+  .planned-expenses-table,
+  .settings-block:not(.settings-block--danger),
+  .cushion-overview__card,
+  .reports-metric,
+  .reports-panel
+) {
+  border-color: var(--pearl-border);
+  border-radius: var(--pearl-radius-pebble);
+  box-shadow: var(--pearl-shadow-md);
+}
+
+[data-theme="pearl"] :is(
+  .cushion-overview__value,
+  .reports-metric__value,
+  .assets-summary__value,
+  .incomes-table__amount,
+  .expenses-table__amount,
+  .limits-table__amount,
+  .assets-table__amount,
+  .expected-incomes-table__amount,
+  .planned-expenses-table__amount,
+  .reports-breakdown__amount
+) {
+  font-family: var(--pearl-font-display);
+  letter-spacing: -0.03em;
+}
+
+@media (max-width: 767px) {
+  [data-theme="pearl"] body {
+    background-attachment: scroll;
+  }
+}

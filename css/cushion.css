@@ -135,3 +135,15 @@
     grid-column: auto;
   }
 }
+
+[data-theme="pearl"] .cushion-overview__value {
+  font-size: var(--font-size-3xl);
+  color: var(--pearl-navy);
+}
+
+[data-theme="pearl"] .cushion-settings {
+  border-color: var(--pearl-border);
+  border-radius: var(--pearl-radius-pebble);
+  box-shadow: var(--pearl-shadow-md);
+  background-color: var(--pearl-surface);
+}

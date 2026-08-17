@@ -97,6 +97,7 @@ export const THEMES = {
   LIGHT: 'light',
   DARK: 'dark',
   JAPANESE: 'japanese',
+  PEARL: 'pearl',
 };
 
 /**

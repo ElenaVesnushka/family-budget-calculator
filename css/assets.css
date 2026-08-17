@@ -398,3 +398,11 @@
     grid-column: 1 / -1;
   }
 }
+
+[data-theme="pearl"] .assets-summary__value {
+  color: var(--pearl-navy);
+}
+
+[data-theme="pearl"] .assets-table__amount {
+  color: var(--pearl-navy);
+}

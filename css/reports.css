@@ -242,3 +242,11 @@
     width: 100%;
   }
 }
+
+[data-theme="pearl"] .reports-metric__value--income {
+  color: var(--pearl-turquoise-deep);
+}
+
+[data-theme="pearl"] .reports-metric__value--expense {
+  color: var(--pearl-coral-deep);
+}

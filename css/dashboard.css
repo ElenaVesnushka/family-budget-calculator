@@ -1,5 +1,7 @@
 /**
  * Стили раздела «Главный экран» (Dashboard).
+ * Базовые правила — для светлой, тёмной и японской тем.
+ * Тема «Водная жемчужина» изолирована селектором [data-theme="pearl"].
  */
 
 .app-section__workspace--active {
@@ -306,6 +308,21 @@
   color: var(--color-text-secondary);
 }
 
+.dashboard-cushion__bar {
+  margin-top: var(--space-4);
+  height: 0.4rem;
+  border-radius: var(--radius-full);
+  background-color: var(--color-bg-subtle);
+  overflow: hidden;
+}
+
+.dashboard-cushion__fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-full);
+  background-color: var(--color-accent);
+}
+
 @media (min-width: 640px) {
   .dashboard__grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -341,5 +358,350 @@
 @media (prefers-reduced-motion: reduce) {
   .dashboard-card {
     transition: none;
+  }
+}
+
+/* ——— Водная жемчужина: только data-theme="pearl" ——— */
+
+[data-theme="pearl"] .dashboard {
+  color: var(--pearl-text);
+}
+
+[data-theme="pearl"] .dashboard-mood {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 12.5rem;
+  margin-bottom: var(--space-5);
+  padding: var(--space-8) min(8rem, 22%) var(--space-8) var(--space-8);
+  background-color: var(--pearl-surface);
+  border: 1px solid var(--pearl-border);
+  border-radius: var(--pearl-radius-pebble-lg);
+  box-shadow: var(--pearl-shadow-lg);
+}
+
+[data-theme="pearl"] .dashboard-mood::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(ellipse 42% 70% at 88% 72%, rgba(255, 253, 249, 0.95) 0%, transparent 58%),
+    radial-gradient(ellipse 28% 40% at 78% 88%, rgba(207, 196, 180, 0.45) 0%, transparent 70%),
+    radial-gradient(ellipse 80% 90% at 100% 0%, rgba(159, 196, 190, 0.35) 0%, transparent 55%),
+    linear-gradient(115deg, rgba(212, 229, 225, 0.55) 0%, rgba(255, 253, 249, 0.2) 42%, rgba(232, 224, 211, 0.4) 100%);
+  box-shadow: inset 0 -40px 80px rgba(42, 115, 108, 0.06);
+}
+
+[data-theme="pearl"] .dashboard-mood::after {
+  content: '';
+  position: absolute;
+  right: 7%;
+  bottom: 22%;
+  width: 4.25rem;
+  height: 4.25rem;
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 30%, #ffffff 0%, #f4f0e8 42%, #d5cfc4 78%, #b7b0a5 100%);
+  box-shadow:
+    0 14px 28px rgba(26, 44, 54, 0.18),
+    inset 0 -8px 12px rgba(90, 80, 70, 0.12),
+    inset 6px 8px 10px rgba(255, 255, 255, 0.65);
+  pointer-events: none;
+}
+
+[data-theme="pearl"] .dashboard-mood__label,
+[data-theme="pearl"] .dashboard-mood__state,
+[data-theme="pearl"] .dashboard-mood__text {
+  position: relative;
+  z-index: 1;
+  max-width: 38rem;
+}
+
+[data-theme="pearl"] .dashboard-mood__label {
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.14em;
+  color: var(--pearl-blue-gray);
+}
+
+[data-theme="pearl"] .dashboard-mood__state {
+  margin: 0 0 var(--space-3);
+  font-family: var(--pearl-font-display);
+  font-size: clamp(1.85rem, 3.2vw, 2.85rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  color: var(--pearl-navy);
+}
+
+[data-theme="pearl"] .dashboard-mood__text {
+  font-size: var(--font-size-lg);
+  font-style: italic;
+  line-height: var(--line-height-relaxed);
+  color: var(--pearl-turquoise-deep);
+}
+
+[data-theme="pearl"] .dashboard-mood--stable,
+[data-theme="pearl"] .dashboard-mood--acceptable,
+[data-theme="pearl"] .dashboard-mood--alert,
+[data-theme="pearl"] .dashboard-mood--critical {
+  background-color: var(--pearl-surface);
+}
+
+[data-theme="pearl"] .dashboard-mood--stable {
+  border-color: color-mix(in srgb, var(--pearl-turquoise) 35%, var(--pearl-border));
+}
+
+[data-theme="pearl"] .dashboard-mood--acceptable {
+  border-color: color-mix(in srgb, var(--pearl-sand) 70%, var(--pearl-border));
+}
+
+[data-theme="pearl"] .dashboard-mood--alert,
+[data-theme="pearl"] .dashboard-mood--critical {
+  border-color: color-mix(in srgb, var(--pearl-coral) 40%, var(--pearl-border));
+}
+
+[data-theme="pearl"] .dashboard__grid {
+  gap: var(--space-4);
+}
+
+[data-theme="pearl"] .dashboard-card {
+  position: relative;
+  min-height: 10.5rem;
+  background-color: var(--pearl-surface);
+  border: 1px solid var(--pearl-border);
+  border-radius: var(--pearl-radius-pebble);
+  box-shadow: var(--pearl-shadow-md);
+}
+
+[data-theme="pearl"] .dashboard-card[data-card="period-balance"]::after,
+[data-theme="pearl"] .dashboard-card[data-card="my-assets"]::after,
+[data-theme="pearl"] .dashboard-card--income::after,
+[data-theme="pearl"] .dashboard-card--expense::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 1.15rem;
+  width: 2.35rem;
+  height: 0.14rem;
+  border-radius: var(--radius-full);
+  transform: translateX(-50%);
+}
+
+[data-theme="pearl"] .dashboard-card[data-card="period-balance"]::after,
+[data-theme="pearl"] .dashboard-card[data-card="my-assets"]::after {
+  background-color: var(--pearl-blue-gray);
+}
+
+[data-theme="pearl"] .dashboard-card--income::after {
+  background-color: var(--pearl-turquoise);
+}
+
+[data-theme="pearl"] .dashboard-card--expense::after {
+  background-color: var(--pearl-coral);
+}
+
+[data-theme="pearl"] .dashboard-card__header {
+  background-color: transparent;
+  border-bottom: none;
+  padding: var(--space-5) var(--space-5) 0;
+}
+
+[data-theme="pearl"] .dashboard-card__title {
+  letter-spacing: 0.12em;
+  color: var(--pearl-blue-gray);
+}
+
+[data-theme="pearl"] .dashboard-card--income .dashboard-card__header,
+[data-theme="pearl"] .dashboard-card--expense .dashboard-card__header,
+[data-theme="pearl"] .dashboard-card--reserve .dashboard-card__header {
+  background-color: transparent;
+}
+
+[data-theme="pearl"] .dashboard-card--income .dashboard-card__title {
+  color: var(--pearl-turquoise-deep);
+}
+
+[data-theme="pearl"] .dashboard-card--expense .dashboard-card__title {
+  color: var(--pearl-coral-deep);
+}
+
+[data-theme="pearl"] .dashboard-card--reserve .dashboard-card__title {
+  color: var(--pearl-blue-gray);
+}
+
+[data-theme="pearl"] .dashboard-card__body {
+  padding: var(--space-3) var(--space-5) var(--space-6);
+}
+
+[data-theme="pearl"] .dashboard-metric__value {
+  font-family: var(--pearl-font-display);
+  font-size: clamp(1.45rem, 2.1vw, 2.15rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: var(--line-height-tight);
+  color: var(--pearl-navy);
+}
+
+[data-theme="pearl"] .dashboard-metric__hint,
+[data-theme="pearl"] .dashboard-metric__sub {
+  color: var(--pearl-text-secondary);
+}
+
+[data-theme="pearl"] .dashboard-metric--income .dashboard-metric__value {
+  color: var(--pearl-turquoise-deep);
+}
+
+[data-theme="pearl"] .dashboard-metric--expense .dashboard-metric__value,
+[data-theme="pearl"] .dashboard-metric--negative .dashboard-metric__value {
+  color: var(--pearl-coral-deep);
+}
+
+[data-theme="pearl"] .dashboard-metric--positive .dashboard-metric__value {
+  color: var(--pearl-navy);
+}
+
+[data-theme="pearl"] .dashboard-card[data-card="cushion"] {
+  min-height: 9.5rem;
+  grid-column: 1 / -1;
+}
+
+[data-theme="pearl"] .dashboard-card[data-card="cushion"] .dashboard-card__body {
+  padding-bottom: var(--space-5);
+}
+
+[data-theme="pearl"] .dashboard-cushion__bar {
+  max-width: 28rem;
+  height: 0.35rem;
+  background-color: var(--pearl-sand-light);
+}
+
+[data-theme="pearl"] .dashboard-cushion__fill {
+  background-color: var(--pearl-turquoise);
+}
+
+[data-theme="pearl"] .dashboard-card[data-card="recent"] {
+  min-height: auto;
+  grid-column: 1 / -1;
+}
+
+[data-theme="pearl"] .dashboard-card[data-card="recent"] .dashboard-card__body {
+  padding-top: var(--space-2);
+  padding-bottom: var(--space-4);
+}
+
+[data-theme="pearl"] .dashboard-recent__empty {
+  padding: var(--space-5);
+  background-color: var(--pearl-surface-soft);
+  border: 1px dashed var(--pearl-border-strong);
+  border-radius: var(--pearl-radius-pebble);
+  color: var(--pearl-text-secondary);
+}
+
+[data-theme="pearl"] .dashboard-recent-table th,
+[data-theme="pearl"] .dashboard-recent-table td {
+  border-bottom-color: var(--pearl-border);
+  color: var(--pearl-text);
+}
+
+[data-theme="pearl"] .dashboard-recent-table th {
+  color: var(--pearl-blue-gray);
+  letter-spacing: 0.08em;
+}
+
+[data-theme="pearl"] .dashboard-recent-table__amount {
+  font-family: var(--pearl-font-display);
+  font-size: var(--font-size-base);
+}
+
+[data-theme="pearl"] .dashboard-recent-table__amount--income {
+  color: var(--pearl-turquoise-deep);
+}
+
+[data-theme="pearl"] .dashboard-recent-table__amount--expense {
+  color: var(--pearl-coral-deep);
+}
+
+[data-theme="pearl"] .dashboard-recent-table__type--income {
+  color: var(--pearl-turquoise-deep);
+  background-color: var(--pearl-seafoam-light);
+}
+
+[data-theme="pearl"] .dashboard-recent-table__type--expense {
+  color: var(--pearl-coral-deep);
+  background-color: var(--pearl-coral-soft);
+}
+
+[data-theme="pearl"] .dashboard-observations {
+  margin-top: var(--space-5);
+  background-color: var(--pearl-surface);
+  border: 1px solid var(--pearl-border);
+  border-radius: var(--pearl-radius-pebble);
+  box-shadow: var(--pearl-shadow-md);
+}
+
+[data-theme="pearl"] .dashboard-observations__title {
+  letter-spacing: 0.12em;
+  color: var(--pearl-blue-gray);
+}
+
+[data-theme="pearl"] .dashboard-observations__item {
+  background-color: var(--pearl-surface-soft);
+  border: 1px solid var(--pearl-border);
+  color: var(--pearl-text);
+}
+
+[data-theme="pearl"] .dashboard-observations__item::before {
+  background-color: var(--pearl-blue-gray-muted);
+}
+
+@media (max-width: 767px) {
+  [data-theme="pearl"] .dashboard__grid {
+    grid-template-columns: 1fr;
+  }
+
+  [data-theme="pearl"] .dashboard-mood {
+    min-height: 10rem;
+    padding: var(--space-5) var(--space-5) var(--space-6);
+  }
+
+  [data-theme="pearl"] .dashboard-mood::after {
+    width: 2.6rem;
+    height: 2.6rem;
+    right: 1.1rem;
+    bottom: 1.1rem;
+    opacity: 0.7;
+  }
+
+  [data-theme="pearl"] .dashboard-card__header {
+    padding: var(--space-4) var(--space-4) 0;
+  }
+
+  [data-theme="pearl"] .dashboard-card__body {
+    padding: var(--space-3) var(--space-4) var(--space-5);
+  }
+}
+
+@media (min-width: 768px) {
+  [data-theme="pearl"] .dashboard__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-4);
+  }
+}
+
+@media (min-width: 1024px) {
+  [data-theme="pearl"] .dashboard__grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--space-5);
+  }
+
+  [data-theme="pearl"] .dashboard-card[data-card="period-balance"],
+  [data-theme="pearl"] .dashboard-card[data-card="my-assets"],
+  [data-theme="pearl"] .dashboard-card--income,
+  [data-theme="pearl"] .dashboard-card--expense {
+    min-height: 11rem;
+  }
+
+  [data-theme="pearl"] .dashboard-mood {
+    padding-right: 11rem;
   }
 }

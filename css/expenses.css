@@ -97,3 +97,7 @@
     width: 100%;
   }
 }
+
+[data-theme="pearl"] .expenses-table__amount {
+  color: var(--pearl-coral-deep);
+}

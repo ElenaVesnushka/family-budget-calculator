@@ -200,6 +200,9 @@ function renderCushionContent(state = getAppState()) {
 
   const moodState = determineFinancialMoodState(state);
   const statusText = getFinancialMoodStatusText(moodState);
+  const coverage = snapshot.targetAmount > 0
+    ? Math.min(100, Math.max(0, (snapshot.totalFunds / snapshot.targetAmount) * 100))
+    : 0;
 
   return `
     <div class="dashboard-metric">
@@ -209,6 +212,9 @@ function renderCushionContent(state = getAppState()) {
         <span class="dashboard-metric__state">${escapeHtml(getFinancialMoodStateLabel(moodState))}</span>
         ${statusText ? ` · ${escapeHtml(statusText)}` : ''}
       </p>
+      <div class="dashboard-cushion__bar" aria-hidden="true">
+        <span class="dashboard-cushion__fill" style="width: ${coverage}%"></span>
+      </div>
     </div>
   `;
 }

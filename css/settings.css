@@ -211,3 +211,12 @@
     width: 100%;
   }
 }
+
+[data-theme="pearl"] .settings-block:not(.settings-block--danger) {
+  background-color: var(--pearl-surface);
+}
+
+[data-theme="pearl"] .settings-block__title {
+  color: var(--pearl-navy);
+  letter-spacing: -0.02em;
+}
