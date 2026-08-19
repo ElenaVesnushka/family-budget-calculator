@@ -34,6 +34,7 @@ const THEME_OPTIONS = [
   { value: THEMES.DARK, label: 'Тёмная' },
   { value: THEMES.JAPANESE, label: 'Японская' },
   { value: THEMES.PEARL, label: 'Водная жемчужина' },
+  { value: THEMES.BRONZE, label: 'Бронзовая опора' },
 ];
 
 const CUSHION_METHOD_OPTIONS = [

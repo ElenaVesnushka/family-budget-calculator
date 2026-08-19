@@ -220,3 +220,8 @@
   color: var(--pearl-navy);
   letter-spacing: -0.02em;
 }
+
+[data-theme="bronze"] .settings-block__title {
+  color: var(--bronze-ivory);
+  letter-spacing: -0.02em;
+}

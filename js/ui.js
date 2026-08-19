@@ -38,7 +38,7 @@ export function initShell(options = {}) {
  * Применяет тему оформления из настроек.
  */
 export function applyTheme(theme) {
-  const allowedThemes = ['light', 'dark', 'japanese', 'pearl'];
+  const allowedThemes = ['light', 'dark', 'japanese', 'pearl', 'bronze'];
   const resolvedTheme = allowedThemes.includes(theme) ? theme : 'light';
   DOM.html.setAttribute('data-theme', resolvedTheme);
 }

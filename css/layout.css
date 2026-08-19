@@ -515,3 +515,235 @@
     background-attachment: scroll;
   }
 }
+
+/* Бронзовая опора: оболочка. Только data-theme="bronze". */
+[data-theme="bronze"] body {
+  background-color: var(--bronze-bg);
+  background-image:
+    radial-gradient(ellipse 80% 42% at 50% -18%, rgba(139, 111, 78, 0.07), transparent 58%),
+    linear-gradient(180deg, #19151c 0%, #12151b 40%, #101218 100%);
+}
+
+[data-theme="bronze"] .app-header {
+  background-color: var(--bronze-surface-deep);
+  border-bottom: 1px solid var(--bronze-border);
+  box-shadow:
+    inset 0 1px 0 rgba(196, 168, 122, 0.1),
+    0 10px 24px rgba(0, 0, 0, 0.28);
+}
+
+[data-theme="bronze"] .app-header__title {
+  color: var(--bronze-ivory);
+  letter-spacing: -0.02em;
+}
+
+[data-theme="bronze"] .app-nav {
+  background-color: var(--bronze-surface-deep);
+  border-right: 1px solid var(--bronze-border);
+  box-shadow: inset -1px 0 0 rgba(0, 0, 0, 0.25);
+}
+
+[data-theme="bronze"] .app-nav__link {
+  position: relative;
+  color: var(--bronze-sand);
+  border-radius: var(--bronze-radius);
+}
+
+[data-theme="bronze"] .app-nav__link:hover {
+  background-color: var(--bronze-accent-subtle);
+  color: var(--bronze-ivory);
+}
+
+[data-theme="bronze"] .app-nav__link[aria-current="page"] {
+  background-color: var(--bronze-accent-subtle);
+  color: var(--bronze-ivory);
+  border-color: var(--bronze-border);
+  box-shadow: inset 0 1px 0 rgba(196, 168, 122, 0.1);
+  font-weight: var(--font-weight-semibold);
+}
+
+[data-theme="bronze"] .app-nav__link[aria-current="page"]::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 22%;
+  bottom: 22%;
+  width: 2px;
+  border-radius: 1px;
+  background-color: var(--bronze-accent);
+}
+
+[data-theme="bronze"] .app-section[data-section="dashboard"] .app-section__header {
+  margin-bottom: var(--space-4);
+}
+
+[data-theme="bronze"] .app-section__title {
+  color: var(--bronze-ivory);
+  letter-spacing: -0.02em;
+}
+
+[data-theme="bronze"] .app-section__description {
+  color: var(--bronze-sand);
+}
+
+[data-theme="bronze"] .app-section__workspace {
+  background-color: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+[data-theme="bronze"] .notifications {
+  background-color: var(--bronze-surface-deep);
+  border-left-color: var(--bronze-border);
+}
+
+[data-theme="bronze"] .notifications__title {
+  color: var(--bronze-sand);
+}
+
+[data-theme="bronze"] :is(
+  .dashboard-card,
+  .dashboard-mood,
+  .dashboard-observations,
+  .incomes-table,
+  .expenses-table,
+  .limits-table,
+  .assets-table,
+  .assets-summary,
+  .templates-table,
+  .expected-incomes-table,
+  .planned-expenses-table,
+  .settings-block:not(.settings-block--danger),
+  .cushion-overview__card,
+  .cushion-settings,
+  .reports-metric,
+  .reports-panel,
+  .assets-snapshots,
+  .assets-compare,
+  .incomes__empty,
+  .expenses__empty,
+  .limits__empty,
+  .assets__empty,
+  .templates__empty,
+  .expected-incomes__empty,
+  .planned-expenses__empty
+) {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background-color: var(--bronze-relief-surface);
+  border: 1px solid var(--bronze-border);
+  border-radius: var(--bronze-radius-lg);
+  box-shadow: var(--bronze-relief-shadow);
+}
+
+[data-theme="bronze"] :is(
+  .dashboard-mood,
+  .dashboard-card[data-card="period-balance"],
+  .dashboard-card[data-card="my-assets"],
+  .dashboard-card[data-card="cushion"],
+  .dashboard-card[data-card="recent"],
+  .dashboard-observations,
+  .reports-panel,
+  .cushion-settings,
+  .assets-summary,
+  .assets-snapshots,
+  .assets-compare
+) {
+  background-color: var(--bronze-relief-surface-deep);
+  box-shadow: var(--bronze-relief-shadow-deep);
+}
+
+[data-theme="bronze"] :is(
+  .dashboard-card,
+  .dashboard-observations,
+  .incomes-table,
+  .expenses-table,
+  .limits-table,
+  .assets-table,
+  .assets-summary,
+  .templates-table,
+  .expected-incomes-table,
+  .planned-expenses-table,
+  .settings-block:not(.settings-block--danger),
+  .cushion-overview__card,
+  .cushion-settings,
+  .reports-metric,
+  .reports-panel,
+  .assets-snapshots,
+  .assets-compare,
+  .incomes__empty,
+  .expenses__empty,
+  .limits__empty,
+  .assets__empty,
+  .templates__empty,
+  .expected-incomes__empty,
+  .planned-expenses__empty
+)::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 12%;
+  right: 12%;
+  z-index: 1;
+  height: 2px;
+  pointer-events: none;
+  background: var(--bronze-relief-edge-neutral);
+}
+
+[data-theme="bronze"] :is(
+  .dashboard-card--income,
+  .incomes-table,
+  .expected-incomes-table
+)::before {
+  background: var(--bronze-relief-edge-income);
+}
+
+[data-theme="bronze"] :is(
+  .dashboard-card--expense,
+  .expenses-table,
+  .planned-expenses-table
+)::before {
+  background: var(--bronze-relief-edge-expense);
+}
+
+[data-theme="bronze"] :is(
+  .incomes-table thead,
+  .expenses-table thead,
+  .limits-table thead,
+  .assets-table thead,
+  .templates-table thead,
+  .expected-incomes-table thead,
+  .planned-expenses-table thead
+) {
+  background-color: var(--bronze-surface-deep);
+  color: var(--bronze-sand);
+}
+
+[data-theme="bronze"] :is(
+  .incomes__empty,
+  .expenses__empty,
+  .limits__empty,
+  .assets__empty,
+  .templates__empty,
+  .expected-incomes__empty,
+  .planned-expenses__empty
+) {
+  color: var(--bronze-sand);
+}
+
+[data-theme="bronze"] :is(
+  .cushion-overview__value,
+  .reports-metric__value,
+  .assets-summary__value,
+  .incomes-table__amount,
+  .expenses-table__amount,
+  .limits-table__amount,
+  .assets-table__amount,
+  .expected-incomes-table__amount,
+  .planned-expenses-table__amount,
+  .reports-breakdown__amount
+) {
+  letter-spacing: -0.02em;
+  font-weight: var(--font-weight-semibold);
+}

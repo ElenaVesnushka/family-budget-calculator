@@ -1,6 +1,6 @@
 /**
  * Дизайн-токены и темы оформления.
- * Темы: светлая (по умолчанию), тёмная, японская, водная жемчужина.
+ * Темы: светлая (по умолчанию), тёмная, японская, водная жемчужина, бронзовая опора.
  */
 
 :root,
@@ -197,6 +197,31 @@
   --pearl-shadow-lg: 0 20px 44px rgba(26, 44, 54, 0.14), 0 6px 16px rgba(27, 83, 78, 0.1);
   --pearl-radius-pebble: 1.25rem;
   --pearl-radius-pebble-lg: 1.5rem;
+
+  /* Тема «Бронзовая опора» — глубокий ночной синий и матовая бронза */
+  --bronze-bg: #12151b;
+  --bronze-surface: #1c2128;
+  --bronze-surface-deep: #16191f;
+  --bronze-surface-soft: #232830;
+  --bronze-accent: #8b6f4e;
+  --bronze-accent-hover: #735b3f;
+  --bronze-accent-subtle: #241f18;
+  --bronze-ivory: #efe6d6;
+  --bronze-sand: #b5a894;
+  --bronze-sand-muted: #8c8070;
+  --bronze-emerald: #3d7a5a;
+  --bronze-emerald-deep: #2f5f46;
+  --bronze-emerald-subtle: #1a2a22;
+  --bronze-copper: #c4785e;
+  --bronze-copper-deep: #a85f49;
+  --bronze-copper-subtle: #2a1d1a;
+  --bronze-border: rgba(139, 111, 78, 0.38);
+  --bronze-border-strong: rgba(139, 111, 78, 0.55);
+  --bronze-shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.28);
+  --bronze-shadow-md: 0 12px 28px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(196, 168, 122, 0.1);
+  --bronze-shadow-lg: 0 20px 44px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(196, 168, 122, 0.12);
+  --bronze-radius: 0.625rem;
+  --bronze-radius-lg: 0.75rem;
 }
 
 [data-theme="pearl"] {
@@ -236,4 +261,76 @@
   --radius-xl: var(--pearl-radius-pebble-lg);
 
   --focus-ring: 0 0 0 3px rgba(42, 115, 108, 0.32);
+}
+
+[data-theme="bronze"] {
+  --color-bg: var(--bronze-bg);
+  --color-bg-elevated: var(--bronze-surface);
+  --color-bg-subtle: var(--bronze-surface-soft);
+  --color-border: var(--bronze-border);
+  --color-border-strong: var(--bronze-border-strong);
+
+  --color-text: var(--bronze-ivory);
+  --color-text-secondary: var(--bronze-sand);
+  --color-text-muted: var(--bronze-sand-muted);
+
+  --color-accent: var(--bronze-accent);
+  --color-accent-hover: var(--bronze-accent-hover);
+  --color-accent-subtle: var(--bronze-accent-subtle);
+
+  --color-income: var(--bronze-emerald);
+  --color-income-subtle: var(--bronze-emerald-subtle);
+  --color-expense: var(--bronze-copper);
+  --color-expense-subtle: var(--bronze-copper-subtle);
+  --color-warning: #a8844e;
+  --color-warning-subtle: #2a2418;
+  --color-alert: var(--bronze-copper-deep);
+  --color-alert-subtle: var(--bronze-copper-subtle);
+  --color-info: var(--bronze-sand);
+  --color-info-subtle: var(--bronze-accent-subtle);
+  --color-neutral: var(--bronze-sand);
+  --color-neutral-subtle: var(--bronze-surface-soft);
+
+  --shadow-sm: var(--bronze-shadow-sm);
+  --shadow-md: var(--bronze-shadow-md);
+  --shadow-lg: var(--bronze-shadow-lg);
+
+  --radius-md: var(--bronze-radius);
+  --radius-lg: var(--bronze-radius-lg);
+  --radius-xl: 0.875rem;
+
+  --focus-ring: 0 0 0 3px rgba(139, 111, 78, 0.4);
+
+  --bronze-relief-surface: var(--bronze-surface);
+  --bronze-relief-surface-deep: var(--bronze-surface-deep);
+  --bronze-relief-shadow:
+    inset 0 1px 0 rgba(196, 168, 122, 0.12),
+    inset 0 22px 40px -34px rgba(196, 168, 122, 0.08),
+    0 16px 32px rgba(0, 0, 0, 0.38);
+  --bronze-relief-shadow-deep:
+    inset 0 1px 0 rgba(196, 168, 122, 0.14),
+    inset 0 22px 40px -34px rgba(196, 168, 122, 0.08),
+    0 18px 36px rgba(0, 0, 0, 0.42);
+  --bronze-relief-edge-neutral: linear-gradient(
+    90deg,
+    transparent,
+    rgba(139, 111, 78, 0.55) 22%,
+    rgba(196, 168, 122, 0.38) 50%,
+    rgba(139, 111, 78, 0.55) 78%,
+    transparent
+  );
+  --bronze-relief-edge-income: linear-gradient(
+    90deg,
+    transparent,
+    var(--bronze-emerald) 20%,
+    var(--bronze-emerald) 80%,
+    transparent
+  );
+  --bronze-relief-edge-expense: linear-gradient(
+    90deg,
+    transparent,
+    var(--bronze-copper) 20%,
+    var(--bronze-copper) 80%,
+    transparent
+  );
 }

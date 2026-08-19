@@ -101,3 +101,7 @@
 [data-theme="pearl"] .expenses-table__amount {
   color: var(--pearl-coral-deep);
 }
+
+[data-theme="bronze"] .expenses-table__amount {
+  color: var(--bronze-copper);
+}

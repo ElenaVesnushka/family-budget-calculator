@@ -326,3 +326,13 @@
 [data-theme="pearl"] .planned-expenses-table__amount {
   color: var(--pearl-coral-deep);
 }
+
+[data-theme="bronze"] .expenses-tabs__button--active {
+  color: var(--bronze-ivory);
+  background-color: var(--bronze-surface);
+  border-color: var(--bronze-border);
+}
+
+[data-theme="bronze"] .planned-expenses-table__amount {
+  color: var(--bronze-copper);
+}

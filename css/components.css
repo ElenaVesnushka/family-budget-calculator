@@ -196,6 +196,39 @@ body.modal-open {
   letter-spacing: -0.02em;
 }
 
+[data-theme="bronze"] .modal-root {
+  background-color: rgba(10, 12, 16, 0.72);
+}
+
+[data-theme="bronze"] .modal {
+  background-color: var(--bronze-relief-surface-deep);
+  border: 1px solid var(--bronze-border);
+  border-radius: var(--bronze-radius-lg);
+  box-shadow: var(--bronze-relief-shadow-deep);
+}
+
+[data-theme="bronze"] .modal::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 12%;
+  right: 12%;
+  z-index: 1;
+  height: 2px;
+  pointer-events: none;
+  background: var(--bronze-relief-edge-neutral);
+}
+
+[data-theme="bronze"] .modal__title {
+  color: var(--bronze-ivory);
+  letter-spacing: -0.02em;
+}
+
+[data-theme="bronze"] .modal__header,
+[data-theme="bronze"] .modal__footer {
+  border-color: rgba(139, 111, 78, 0.22);
+}
+
 /* Планшет: ≤1023 px */
 @media (max-width: 1023px) {
   .modal {

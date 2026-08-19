@@ -147,3 +147,8 @@
   box-shadow: var(--pearl-shadow-md);
   background-color: var(--pearl-surface);
 }
+
+[data-theme="bronze"] .cushion-overview__value {
+  font-size: var(--font-size-3xl);
+  color: var(--bronze-ivory);
+}

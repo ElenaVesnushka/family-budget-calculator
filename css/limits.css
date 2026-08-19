@@ -157,3 +157,7 @@
 [data-theme="pearl"] .limits-table__amount {
   color: var(--pearl-navy);
 }
+
+[data-theme="bronze"] .limits-table__amount {
+  color: var(--bronze-ivory);
+}

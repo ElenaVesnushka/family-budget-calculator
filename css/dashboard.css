@@ -705,3 +705,310 @@
     padding-right: 11rem;
   }
 }
+
+/* ——— Бронзовая опора: только data-theme="bronze" ——— */
+
+[data-theme="bronze"] .dashboard {
+  color: var(--bronze-ivory);
+}
+
+[data-theme="bronze"] .dashboard-mood {
+  min-height: 11rem;
+  margin-bottom: var(--space-5);
+  padding: var(--space-8) var(--space-6);
+  box-shadow:
+    var(--bronze-relief-shadow-deep),
+    inset 0 0 0 1px rgba(139, 111, 78, 0.22);
+}
+
+[data-theme="bronze"] .dashboard-mood::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    var(--bronze-relief-edge-neutral) 0 0 / 100% 2px no-repeat,
+    radial-gradient(ellipse 48% 62% at 100% 0%, rgba(139, 111, 78, 0.18), transparent 62%),
+    linear-gradient(180deg, rgba(196, 168, 122, 0.08) 0%, transparent 34%);
+}
+
+[data-theme="bronze"] .dashboard-mood::after {
+  content: '';
+  position: absolute;
+  right: 4%;
+  bottom: 14%;
+  z-index: 0;
+  width: 7.25rem;
+  height: 7.25rem;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0.28;
+  background:
+    radial-gradient(circle at 50% 50%, transparent 26%, rgba(139, 111, 78, 0.7) 27%, transparent 31%),
+    radial-gradient(circle at 50% 50%, transparent 44%, rgba(139, 111, 78, 0.45) 45.5%, transparent 50%),
+    radial-gradient(circle at 36% 32%, rgba(239, 230, 214, 0.16), transparent 40%),
+    radial-gradient(circle at 50% 54%, rgba(139, 111, 78, 0.22), rgba(18, 21, 27, 0.2) 72%);
+  box-shadow:
+    0 0 0 1px rgba(139, 111, 78, 0.4),
+    inset 0 0 0 0.55rem rgba(139, 111, 78, 0.12);
+}
+
+[data-theme="bronze"] .dashboard-mood__label,
+[data-theme="bronze"] .dashboard-mood__state,
+[data-theme="bronze"] .dashboard-mood__text {
+  position: relative;
+  z-index: 1;
+  max-width: 42rem;
+}
+
+[data-theme="bronze"] .dashboard-mood__label {
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.14em;
+  color: var(--bronze-sand);
+}
+
+[data-theme="bronze"] .dashboard-mood__state {
+  margin: 0 0 var(--space-3);
+  font-size: clamp(1.7rem, 2.8vw, 2.5rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  color: var(--bronze-ivory);
+}
+
+[data-theme="bronze"] .dashboard-mood__text {
+  font-size: var(--font-size-lg);
+  line-height: var(--line-height-relaxed);
+  color: var(--bronze-sand);
+}
+
+[data-theme="bronze"] .dashboard-mood--stable,
+[data-theme="bronze"] .dashboard-mood--acceptable,
+[data-theme="bronze"] .dashboard-mood--alert,
+[data-theme="bronze"] .dashboard-mood--critical {
+  background-color: var(--bronze-relief-surface-deep);
+}
+
+[data-theme="bronze"] .dashboard-mood--stable {
+  border-color: color-mix(in srgb, var(--bronze-emerald) 40%, var(--bronze-border));
+}
+
+[data-theme="bronze"] .dashboard-mood--acceptable {
+  border-color: var(--bronze-border-strong);
+}
+
+[data-theme="bronze"] .dashboard-mood--alert,
+[data-theme="bronze"] .dashboard-mood--critical {
+  border-color: color-mix(in srgb, var(--bronze-copper) 45%, var(--bronze-border));
+}
+
+[data-theme="bronze"] .dashboard__grid {
+  gap: var(--space-4);
+}
+
+[data-theme="bronze"] .dashboard-card__header {
+  background-color: transparent;
+  border-bottom: none;
+  padding: var(--space-5) var(--space-5) 0;
+}
+
+[data-theme="bronze"] .dashboard-card__title {
+  letter-spacing: 0.12em;
+  color: var(--bronze-accent);
+}
+
+[data-theme="bronze"] .dashboard-card--income .dashboard-card__header,
+[data-theme="bronze"] .dashboard-card--expense .dashboard-card__header,
+[data-theme="bronze"] .dashboard-card--reserve .dashboard-card__header {
+  background-color: transparent;
+}
+
+[data-theme="bronze"] .dashboard-card--income .dashboard-card__title {
+  color: var(--bronze-emerald);
+}
+
+[data-theme="bronze"] .dashboard-card--expense .dashboard-card__title {
+  color: var(--bronze-copper);
+}
+
+[data-theme="bronze"] .dashboard-card--reserve .dashboard-card__title {
+  color: var(--bronze-sand);
+}
+
+[data-theme="bronze"] .dashboard-card__body {
+  padding: var(--space-3) var(--space-5) var(--space-5);
+}
+
+[data-theme="bronze"] .dashboard-metric__value {
+  font-size: clamp(1.55rem, 2.2vw, 2.25rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: var(--line-height-tight);
+  color: var(--bronze-ivory);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+}
+
+[data-theme="bronze"] .dashboard-metric__hint,
+[data-theme="bronze"] .dashboard-metric__sub {
+  color: var(--bronze-sand);
+}
+
+[data-theme="bronze"] .dashboard-metric--income .dashboard-metric__value {
+  color: var(--bronze-emerald);
+}
+
+[data-theme="bronze"] .dashboard-metric--expense .dashboard-metric__value,
+[data-theme="bronze"] .dashboard-metric--negative .dashboard-metric__value {
+  color: var(--bronze-copper);
+}
+
+[data-theme="bronze"] .dashboard-metric--positive .dashboard-metric__value {
+  color: var(--bronze-ivory);
+}
+
+[data-theme="bronze"] .dashboard-card[data-card="cushion"] {
+  min-height: 9rem;
+  grid-column: 1 / -1;
+}
+
+[data-theme="bronze"] .dashboard-cushion__bar {
+  max-width: 28rem;
+  height: 0.28rem;
+  background-color: var(--bronze-surface-deep);
+}
+
+[data-theme="bronze"] .dashboard-cushion__fill {
+  background-color: var(--bronze-accent);
+}
+
+[data-theme="bronze"] .dashboard-card[data-card="recent"] {
+  min-height: auto;
+  grid-column: 1 / -1;
+}
+
+[data-theme="bronze"] .dashboard-card[data-card="recent"] .dashboard-card__body {
+  padding-top: var(--space-2);
+  padding-bottom: var(--space-4);
+}
+
+[data-theme="bronze"] .dashboard-recent__empty {
+  padding: var(--space-5);
+  background-color: rgba(22, 25, 31, 0.55);
+  border: 1px solid rgba(139, 111, 78, 0.22);
+  border-radius: var(--bronze-radius);
+  color: var(--bronze-sand);
+  box-shadow: inset 0 1px 0 rgba(196, 168, 122, 0.06);
+}
+
+[data-theme="bronze"] .dashboard-recent-table th,
+[data-theme="bronze"] .dashboard-recent-table td {
+  border-bottom-color: rgba(139, 111, 78, 0.18);
+  color: var(--bronze-ivory);
+}
+
+[data-theme="bronze"] .dashboard-recent-table th {
+  color: var(--bronze-sand);
+  letter-spacing: 0.08em;
+}
+
+[data-theme="bronze"] .dashboard-recent-table__amount {
+  font-size: var(--font-size-base);
+}
+
+[data-theme="bronze"] .dashboard-recent-table__amount--income {
+  color: var(--bronze-emerald);
+}
+
+[data-theme="bronze"] .dashboard-recent-table__amount--expense {
+  color: var(--bronze-copper);
+}
+
+[data-theme="bronze"] .dashboard-recent-table__type--income {
+  color: var(--bronze-emerald);
+  background-color: var(--bronze-emerald-subtle);
+}
+
+[data-theme="bronze"] .dashboard-recent-table__type--expense {
+  color: var(--bronze-copper);
+  background-color: var(--bronze-copper-subtle);
+}
+
+[data-theme="bronze"] .dashboard-observations {
+  margin-top: var(--space-5);
+}
+
+[data-theme="bronze"] .dashboard-observations__title {
+  letter-spacing: 0.12em;
+  color: var(--bronze-sand);
+}
+
+[data-theme="bronze"] .dashboard-observations__hint {
+  color: var(--bronze-sand-muted);
+}
+
+[data-theme="bronze"] .dashboard-observations__item {
+  background-color: var(--bronze-surface-deep);
+  border: 1px solid rgba(139, 111, 78, 0.2);
+  color: var(--bronze-ivory);
+}
+
+[data-theme="bronze"] .dashboard-observations__item::before {
+  background-color: var(--bronze-accent);
+}
+
+@media (max-width: 767px) {
+  [data-theme="bronze"] .dashboard__grid {
+    grid-template-columns: 1fr;
+  }
+
+  [data-theme="bronze"] .dashboard-mood {
+    min-height: 9.5rem;
+    padding: var(--space-5);
+  }
+
+  [data-theme="bronze"] .dashboard-mood::after {
+    display: none;
+  }
+
+  [data-theme="bronze"] .dashboard-card__header {
+    padding: var(--space-4) var(--space-4) 0;
+  }
+
+  [data-theme="bronze"] .dashboard-card__body {
+    padding: var(--space-3) var(--space-4) var(--space-5);
+  }
+}
+
+@media (min-width: 768px) {
+  [data-theme="bronze"] .dashboard__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-4);
+  }
+
+  [data-theme="bronze"] .dashboard-mood::after {
+    display: none;
+  }
+}
+
+@media (min-width: 1024px) {
+  [data-theme="bronze"] .dashboard__grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--space-5);
+  }
+
+  [data-theme="bronze"] .dashboard-card[data-card="period-balance"],
+  [data-theme="bronze"] .dashboard-card[data-card="my-assets"],
+  [data-theme="bronze"] .dashboard-card--income,
+  [data-theme="bronze"] .dashboard-card--expense {
+    min-height: 10.75rem;
+  }
+
+  [data-theme="bronze"] .dashboard-mood {
+    padding-right: 10rem;
+  }
+
+  [data-theme="bronze"] .dashboard-mood::after {
+    display: block;
+  }
+}

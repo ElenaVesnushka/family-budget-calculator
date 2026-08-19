@@ -210,3 +210,33 @@
 [data-theme="pearl"] .incomes-table__amount {
   color: var(--pearl-turquoise-deep);
 }
+
+[data-theme="bronze"] .btn {
+  border-radius: var(--bronze-radius);
+}
+
+[data-theme="bronze"] .btn--primary {
+  color: var(--bronze-ivory);
+  background-color: var(--bronze-accent);
+}
+
+[data-theme="bronze"] .btn--primary:hover {
+  background-color: var(--bronze-accent-hover);
+}
+
+[data-theme="bronze"] .btn--secondary {
+  color: var(--bronze-ivory);
+  background-color: var(--bronze-surface);
+  border-color: var(--bronze-border-strong);
+}
+
+[data-theme="bronze"] .form-field__input {
+  background-color: var(--bronze-surface-deep);
+  border-color: var(--bronze-border);
+  color: var(--bronze-ivory);
+  border-radius: var(--bronze-radius);
+}
+
+[data-theme="bronze"] .incomes-table__amount {
+  color: var(--bronze-emerald);
+}

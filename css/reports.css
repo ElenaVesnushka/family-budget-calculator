@@ -250,3 +250,11 @@
 [data-theme="pearl"] .reports-metric__value--expense {
   color: var(--pearl-coral-deep);
 }
+
+[data-theme="bronze"] .reports-metric__value--income {
+  color: var(--bronze-emerald);
+}
+
+[data-theme="bronze"] .reports-metric__value--expense {
+  color: var(--bronze-copper);
+}

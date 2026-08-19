@@ -326,3 +326,13 @@
 [data-theme="pearl"] .expected-incomes-table__amount {
   color: var(--pearl-turquoise-deep);
 }
+
+[data-theme="bronze"] .incomes-tabs__button--active {
+  color: var(--bronze-ivory);
+  background-color: var(--bronze-surface);
+  border-color: var(--bronze-border);
+}
+
+[data-theme="bronze"] .expected-incomes-table__amount {
+  color: var(--bronze-emerald);
+}
