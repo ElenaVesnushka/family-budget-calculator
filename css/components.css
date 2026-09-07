@@ -229,6 +229,31 @@ body.modal-open {
   border-color: rgba(139, 111, 78, 0.22);
 }
 
+[data-theme="japanese"] .modal-root {
+  background-color: rgba(5, 13, 10, 0.78);
+}
+
+[data-theme="japanese"] .modal {
+  border: var(--wabi-border-solid);
+  border-radius: var(--wabi-radius);
+  box-shadow: var(--wabi-border-inset);
+  background-color: var(--wabi-surface-raised);
+  background-image: var(--wabi-panel-texture);
+}
+
+[data-theme="japanese"] .modal__title {
+  font-family: var(--wabi-font-display);
+  font-size: var(--font-size-lg);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--wabi-gold);
+}
+
+[data-theme="japanese"] .modal__header,
+[data-theme="japanese"] .modal__footer {
+  border-color: rgba(197, 160, 89, 0.28);
+}
+
 /* Планшет: ≤1023 px */
 @media (max-width: 1023px) {
   .modal {

@@ -1,6 +1,7 @@
 /**
  * Стили раздела «Главный экран» (Dashboard).
- * Базовые правила — для светлой, тёмной и японской тем.
+ * Базовые правила — для светлой и тёмной тем.
+ * Тема «Ваби-саби» изолирована селектором [data-theme="japanese"].
  * Тема «Водная жемчужина» изолирована селектором [data-theme="pearl"].
  */
 
@@ -1010,5 +1011,369 @@
 
   [data-theme="bronze"] .dashboard-mood::after {
     display: block;
+  }
+}
+
+/* ——— Ваби-саби: только data-theme="japanese" ——— */
+
+[data-theme="japanese"] .dashboard {
+  color: var(--wabi-cream);
+}
+
+[data-theme="japanese"] .dashboard-mood {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 11.5rem;
+  margin-bottom: var(--space-5);
+  padding: var(--space-8) var(--space-6);
+  border: var(--wabi-border-solid);
+  border-radius: var(--wabi-radius);
+  box-shadow: var(--wabi-border-inset);
+  background-color: var(--wabi-surface-raised);
+  background-image:
+    var(--wabi-panel-texture),
+    radial-gradient(ellipse 60% 50% at 8% 6%, rgba(95, 141, 139, 0.1), transparent 55%);
+}
+
+[data-theme="japanese"] .dashboard-mood::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse 50% 45% at 82% 22%, rgba(197, 160, 89, 0.06), transparent 62%);
+}
+
+[data-theme="japanese"] .dashboard-mood::after {
+  content: '';
+  position: absolute;
+  right: 4%;
+  top: 10%;
+  z-index: 0;
+  width: 8.5rem;
+  height: 8.5rem;
+  pointer-events: none;
+  opacity: 0.82;
+  background: var(--wabi-enso) center / contain no-repeat;
+}
+
+[data-theme="japanese"] .dashboard-mood__label,
+[data-theme="japanese"] .dashboard-mood__state,
+[data-theme="japanese"] .dashboard-mood__text {
+  position: relative;
+  z-index: 1;
+  max-width: 42rem;
+}
+
+[data-theme="japanese"] .dashboard-mood__label {
+  font-family: var(--wabi-font-display);
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--wabi-gold-muted);
+}
+
+[data-theme="japanese"] .dashboard-mood__state {
+  margin: 0 0 var(--space-3);
+  font-family: var(--wabi-font-display);
+  font-size: clamp(1.85rem, 3vw, 2.75rem);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  line-height: 1.12;
+  color: var(--wabi-cream);
+}
+
+[data-theme="japanese"] .dashboard-mood__text {
+  font-size: var(--font-size-lg);
+  line-height: var(--line-height-relaxed);
+  color: var(--wabi-cream-muted);
+}
+
+[data-theme="japanese"] .dashboard-mood--stable,
+[data-theme="japanese"] .dashboard-mood--acceptable,
+[data-theme="japanese"] .dashboard-mood--alert,
+[data-theme="japanese"] .dashboard-mood--critical {
+  background-color: var(--wabi-surface-raised);
+}
+
+[data-theme="japanese"] .dashboard-mood--stable {
+  border-color: color-mix(in srgb, var(--wabi-teal) 32%, rgba(197, 160, 89, 0.36));
+}
+
+[data-theme="japanese"] .dashboard-mood--acceptable {
+  border-color: var(--wabi-border-strong);
+}
+
+[data-theme="japanese"] .dashboard-mood--alert,
+[data-theme="japanese"] .dashboard-mood--critical {
+  border-color: color-mix(in srgb, var(--wabi-terracotta) 36%, rgba(197, 160, 89, 0.36));
+}
+
+[data-theme="japanese"] .dashboard-card {
+  border: var(--wabi-border-solid);
+  border-radius: var(--wabi-radius);
+  box-shadow: var(--wabi-border-inset);
+  background-color: var(--wabi-surface);
+  background-image: var(--wabi-panel-texture);
+}
+
+[data-theme="japanese"] .dashboard-card__header {
+  background-color: transparent;
+  border-bottom: none;
+  padding: var(--space-5) var(--space-5) 0;
+}
+
+[data-theme="japanese"] .dashboard-card__title {
+  font-family: var(--wabi-font-display);
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--wabi-gold-muted);
+}
+
+[data-theme="japanese"] .dashboard-card--income .dashboard-card__header,
+[data-theme="japanese"] .dashboard-card--expense .dashboard-card__header,
+[data-theme="japanese"] .dashboard-card--reserve .dashboard-card__header {
+  background-color: transparent;
+}
+
+[data-theme="japanese"] .dashboard-card--income .dashboard-card__title {
+  color: var(--wabi-teal);
+}
+
+[data-theme="japanese"] .dashboard-card--expense .dashboard-card__title {
+  color: var(--wabi-terracotta);
+}
+
+[data-theme="japanese"] .dashboard-card--reserve .dashboard-card__title {
+  color: var(--wabi-gold-muted);
+}
+
+[data-theme="japanese"] .dashboard-card__body {
+  padding: var(--space-3) var(--space-5) var(--space-5);
+}
+
+[data-theme="japanese"] .dashboard-metric__value {
+  font-family: var(--wabi-font-display);
+  font-size: clamp(1.65rem, 2.4vw, 2.35rem);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: var(--line-height-tight);
+  color: var(--wabi-cream);
+}
+
+[data-theme="japanese"] .dashboard-metric__hint,
+[data-theme="japanese"] .dashboard-metric__sub {
+  font-size: var(--font-size-sm);
+  color: var(--wabi-cream-muted);
+}
+
+[data-theme="japanese"] .dashboard-metric--income .dashboard-metric__value {
+  color: var(--wabi-teal);
+}
+
+[data-theme="japanese"] .dashboard-metric--expense .dashboard-metric__value,
+[data-theme="japanese"] .dashboard-metric--negative .dashboard-metric__value {
+  color: var(--wabi-terracotta);
+}
+
+[data-theme="japanese"] .dashboard-metric--positive .dashboard-metric__value {
+  color: var(--wabi-cream);
+}
+
+[data-theme="japanese"] .dashboard-card[data-card="cushion"] {
+  position: relative;
+  overflow: hidden;
+  min-height: 9rem;
+  grid-column: 1 / -1;
+  background-color: var(--wabi-surface-raised);
+}
+
+[data-theme="japanese"] .dashboard-card[data-card="cushion"]::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 14%;
+  z-index: 0;
+  width: 2px;
+  height: 38%;
+  pointer-events: none;
+  opacity: 0.55;
+  background: linear-gradient(180deg, var(--wabi-gold-bright), var(--wabi-gold-deep));
+  transform: rotate(22deg);
+  transform-origin: top center;
+}
+
+[data-theme="japanese"] .dashboard-card[data-card="cushion"]::after {
+  content: '';
+  position: absolute;
+  top: 18%;
+  right: 9%;
+  z-index: 0;
+  width: 2px;
+  height: 28%;
+  pointer-events: none;
+  opacity: 0.48;
+  background: linear-gradient(180deg, rgba(212, 175, 55, 0.85), rgba(184, 142, 70, 0.5));
+  transform: rotate(48deg);
+  transform-origin: top center;
+  box-shadow: 12px 22px 0 -0.5px rgba(197, 160, 89, 0.4);
+}
+
+[data-theme="japanese"] .dashboard-card[data-card="cushion"] .dashboard-card__body {
+  position: relative;
+  z-index: 1;
+}
+
+[data-theme="japanese"] .dashboard-cushion__bar {
+  max-width: 28rem;
+  height: 1px;
+  margin-top: var(--space-5);
+  border-radius: 0;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(197, 160, 89, 0.5) 0,
+      rgba(197, 160, 89, 0.5) 1px,
+      transparent 1px,
+      transparent 10%
+    ),
+    linear-gradient(90deg, rgba(197, 160, 89, 0.32), rgba(197, 160, 89, 0.32));
+}
+
+[data-theme="japanese"] .dashboard-cushion__fill {
+  height: 3px;
+  margin-top: -1px;
+  border-radius: 0;
+  background-color: var(--wabi-gold);
+  box-shadow: 0 0 6px rgba(197, 160, 89, 0.2);
+}
+
+[data-theme="japanese"] .dashboard-card[data-card="recent"] {
+  min-height: auto;
+  grid-column: 1 / -1;
+  background-color: rgba(14, 30, 25, 0.38);
+}
+
+[data-theme="japanese"] .dashboard-card[data-card="recent"] .dashboard-card__body {
+  padding-top: var(--space-2);
+  padding-bottom: var(--space-4);
+}
+
+[data-theme="japanese"] .dashboard-recent__empty {
+  padding: var(--space-5);
+  background-color: transparent;
+  border: none;
+  border-top: var(--wabi-border-solid);
+  color: var(--wabi-cream-muted);
+}
+
+[data-theme="japanese"] .dashboard-recent-table th,
+[data-theme="japanese"] .dashboard-recent-table td {
+  border-bottom: 1px solid rgba(197, 160, 89, 0.14);
+  color: var(--wabi-cream);
+}
+
+[data-theme="japanese"] .dashboard-recent-table th {
+  font-family: var(--wabi-font-display);
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--wabi-gold-muted);
+  background-color: transparent;
+}
+
+[data-theme="japanese"] .dashboard-recent-table__amount {
+  font-family: var(--wabi-font-display);
+  font-size: var(--font-size-base);
+  letter-spacing: 0.03em;
+}
+
+[data-theme="japanese"] .dashboard-recent-table__amount--income {
+  color: var(--wabi-teal);
+}
+
+[data-theme="japanese"] .dashboard-recent-table__amount--expense {
+  color: var(--wabi-terracotta);
+}
+
+[data-theme="japanese"] .dashboard-recent-table__type--income {
+  color: var(--wabi-teal);
+  background-color: var(--color-income-subtle);
+  border-radius: var(--wabi-radius);
+}
+
+[data-theme="japanese"] .dashboard-recent-table__type--expense {
+  color: var(--wabi-terracotta);
+  background-color: var(--color-expense-subtle);
+  border-radius: var(--wabi-radius);
+}
+
+[data-theme="japanese"] .dashboard-observations {
+  margin-top: var(--space-5);
+}
+
+[data-theme="japanese"] .dashboard-observations__title {
+  font-family: var(--wabi-font-display);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--wabi-gold-muted);
+}
+
+[data-theme="japanese"] .dashboard-observations__hint {
+  color: var(--wabi-cream-muted);
+}
+
+[data-theme="japanese"] .dashboard-observations__item {
+  background-color: rgba(8, 20, 16, 0.35);
+  border: 1px solid rgba(197, 160, 89, 0.18);
+  border-radius: var(--wabi-radius);
+  color: var(--wabi-cream);
+}
+
+[data-theme="japanese"] .dashboard-observations__item::before {
+  background-color: var(--wabi-gold);
+}
+
+@media (max-width: 767px) {
+  [data-theme="japanese"] .dashboard-mood {
+    min-height: 9.5rem;
+    padding: var(--space-5);
+  }
+
+  [data-theme="japanese"] .dashboard-mood::after {
+    width: 4.5rem;
+    height: 4.5rem;
+    right: 3%;
+    top: 12%;
+    opacity: 0.55;
+  }
+
+  [data-theme="japanese"] .dashboard-card[data-card="cushion"]::before,
+  [data-theme="japanese"] .dashboard-card[data-card="cushion"]::after {
+    opacity: 0.32;
+  }
+
+  [data-theme="japanese"] .dashboard-card__header {
+    padding: var(--space-4) var(--space-4) 0;
+  }
+
+  [data-theme="japanese"] .dashboard-card__body {
+    padding: var(--space-3) var(--space-4) var(--space-5);
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  [data-theme="japanese"] .dashboard-mood::after {
+    width: 6rem;
+    height: 6rem;
+    opacity: 0.68;
+  }
+}
+
+@media (min-width: 1024px) {
+  [data-theme="japanese"] .dashboard-mood {
+    padding-right: 11rem;
   }
 }

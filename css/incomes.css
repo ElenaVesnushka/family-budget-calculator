@@ -240,3 +240,48 @@
 [data-theme="bronze"] .incomes-table__amount {
   color: var(--bronze-emerald);
 }
+
+[data-theme="japanese"] .btn {
+  font-family: var(--wabi-font-display);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border-radius: var(--wabi-radius);
+}
+
+[data-theme="japanese"] .btn--primary {
+  color: var(--wabi-gold);
+  background-color: transparent;
+  border: var(--wabi-border-solid);
+}
+
+[data-theme="japanese"] .btn--primary:hover {
+  color: var(--wabi-gold-bright);
+  background-color: rgba(197, 160, 89, 0.08);
+  border-color: var(--wabi-border-strong);
+}
+
+[data-theme="japanese"] .btn--secondary {
+  color: var(--wabi-cream);
+  background-color: transparent;
+  border: var(--wabi-border-solid);
+}
+
+[data-theme="japanese"] .form-field__label {
+  font-family: var(--wabi-font-display);
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--wabi-gold-muted);
+}
+
+[data-theme="japanese"] .form-field__input {
+  background-color: rgba(8, 20, 16, 0.72);
+  border: var(--wabi-border-solid);
+  border-radius: var(--wabi-radius);
+  color: var(--wabi-cream);
+  font-family: var(--font-family);
+}
+
+[data-theme="japanese"] .incomes-table__amount {
+  color: var(--wabi-teal);
+}

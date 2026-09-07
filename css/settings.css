@@ -225,3 +225,10 @@
   color: var(--bronze-ivory);
   letter-spacing: -0.02em;
 }
+
+[data-theme="japanese"] .settings-block__title {
+  font-family: var(--wabi-font-display);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--wabi-gold);
+}

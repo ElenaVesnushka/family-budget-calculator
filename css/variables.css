@@ -1,6 +1,6 @@
 /**
  * Дизайн-токены и темы оформления.
- * Темы: светлая (по умолчанию), тёмная, японская, водная жемчужина, бронзовая опора.
+ * Темы: светлая (по умолчанию), тёмная, ваби-саби, водная жемчужина, бронзовая опора.
  */
 
 :root,
@@ -75,38 +75,42 @@
 }
 
 [data-theme="japanese"] {
-  --color-bg: #f4f1ea;
-  --color-bg-elevated: #faf8f3;
-  --color-bg-subtle: #ebe6dc;
-  --color-border: #d4cfc4;
-  --color-border-strong: #b8b0a2;
+  --color-bg: var(--wabi-bg);
+  --color-bg-elevated: var(--wabi-surface);
+  --color-bg-subtle: var(--wabi-surface-raised);
+  --color-border: var(--wabi-border-color);
+  --color-border-strong: var(--wabi-border-strong);
 
-  --color-text: #2c2824;
-  --color-text-secondary: #5a534a;
-  --color-text-muted: #8a8278;
+  --color-text: var(--wabi-cream);
+  --color-text-secondary: var(--wabi-cream-muted);
+  --color-text-muted: var(--wabi-gold-muted);
 
-  --color-accent: #5a7d6a;
-  --color-accent-hover: #486556;
-  --color-accent-subtle: #e4ebe6;
+  --color-accent: var(--wabi-gold);
+  --color-accent-hover: var(--wabi-gold-bright);
+  --color-accent-subtle: var(--wabi-surface-raised);
 
-  --color-income: #4a7c59;
-  --color-income-subtle: #e8f0ea;
-  --color-expense: #a0524a;
-  --color-expense-subtle: #f5ebe9;
-  --color-warning: #9a7b4f;
-  --color-warning-subtle: #f5f0e6;
-  --color-alert: #c47a3a;
-  --color-alert-subtle: #f8efe6;
-  --color-info: #5a7d6a;
-  --color-info-subtle: #e4ebe6;
-  --color-neutral: #7a736a;
-  --color-neutral-subtle: #ebe6dc;
+  --color-income: var(--wabi-teal);
+  --color-income-subtle: rgba(95, 141, 139, 0.14);
+  --color-expense: var(--wabi-terracotta);
+  --color-expense-subtle: rgba(139, 58, 43, 0.14);
+  --color-warning: var(--wabi-gold-deep);
+  --color-warning-subtle: rgba(184, 142, 70, 0.12);
+  --color-alert: var(--wabi-terracotta-muted);
+  --color-alert-subtle: rgba(139, 58, 43, 0.12);
+  --color-info: var(--wabi-teal);
+  --color-info-subtle: rgba(95, 141, 139, 0.12);
+  --color-neutral: var(--wabi-cream-muted);
+  --color-neutral-subtle: var(--wabi-surface-raised);
 
-  --shadow-sm: 0 1px 2px rgba(44, 40, 36, 0.05);
-  --shadow-md: 0 4px 12px rgba(44, 40, 36, 0.07);
-  --shadow-lg: 0 8px 24px rgba(44, 40, 36, 0.1);
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: none;
 
-  --focus-ring: 0 0 0 3px rgba(90, 125, 106, 0.35);
+  --radius-md: var(--wabi-radius);
+  --radius-lg: var(--wabi-radius);
+  --radius-xl: var(--wabi-radius);
+
+  --focus-ring: 0 0 0 2px rgba(197, 160, 89, 0.4);
 }
 
 :root {
@@ -168,6 +172,39 @@
   --z-header: 20;
   --z-notifications: 30;
   --z-modal: 100;
+
+  /* Тема «Ваби-саби» (техн. japanese) */
+  --wabi-font-display: "Iowan Old Style", Palatino, "Palatino Linotype", Georgia, "Times New Roman", serif;
+  --wabi-font-body: Georgia, "Iowan Old Style", Palatino, "Times New Roman", Times, serif;
+  --wabi-radius: 2px;
+  --wabi-bg: #081410;
+  --wabi-bg-deep: #050d0a;
+  --wabi-nav-bg: #0a2420;
+  --wabi-surface: #0e1e19;
+  --wabi-surface-raised: #112822;
+  --wabi-gold: #c5a059;
+  --wabi-gold-deep: #b88e46;
+  --wabi-gold-bright: #d4af37;
+  --wabi-gold-muted: #a68b5a;
+  --wabi-cream: #ebe4d6;
+  --wabi-cream-bright: #f2ece0;
+  --wabi-cream-muted: #9a9080;
+  --wabi-teal: #5f8d8b;
+  --wabi-teal-muted: #4a7573;
+  --wabi-terracotta: #8b3a2b;
+  --wabi-terracotta-muted: #a04838;
+  --wabi-border-color: rgba(197, 160, 89, 0.36);
+  --wabi-border-strong: rgba(197, 160, 89, 0.52);
+  --wabi-border-solid: 1px solid rgba(197, 160, 89, 0.36);
+  --wabi-border-inset: inset 0 0 0 1px rgba(197, 160, 89, 0.1);
+  --wabi-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='320'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+  --wabi-enso: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Cpath d='M86 20 C52 6, 10 34, 16 70 C 20 91, 40 102, 60 95' fill='none' stroke='%23b88e46' stroke-width='5' stroke-linecap='round' opacity='0.45'/%3E%3Cpath d='M86 20 C52 6, 10 34, 16 70 C 20 91, 40 102, 60 95' fill='none' stroke='%23c5a059' stroke-width='3.2' stroke-linecap='round'/%3E%3Cpath d='M86 20 C52 6, 10 34, 16 70 C 20 91, 40 102, 60 95' fill='none' stroke='%23d4af37' stroke-width='1.2' stroke-linecap='round' opacity='0.4'/%3E%3C/svg%3E");
+  --wabi-panel-texture:
+    radial-gradient(ellipse 75% 50% at 12% 8%, rgba(95, 141, 139, 0.07), transparent 58%),
+    radial-gradient(ellipse 60% 45% at 92% 94%, rgba(0, 0, 0, 0.18), transparent 62%);
+  --wabi-nav-texture:
+    radial-gradient(ellipse 85% 65% at 0% 40%, rgba(95, 141, 139, 0.14), transparent 58%),
+    radial-gradient(ellipse 50% 40% at 100% 80%, rgba(13, 61, 56, 0.35), transparent 55%);
 
   /* Тема «Водная жемчужина» — глубокая светлая морская палитра */
   --pearl-font-display: "Iowan Old Style", Palatino, "Palatino Linotype", Georgia, "Times New Roman", serif;

@@ -152,3 +152,10 @@
   font-size: var(--font-size-3xl);
   color: var(--bronze-ivory);
 }
+
+[data-theme="japanese"] .cushion-overview__value {
+  font-family: var(--wabi-font-display);
+  font-size: var(--font-size-3xl);
+  color: var(--wabi-cream);
+  letter-spacing: 0.04em;
+}

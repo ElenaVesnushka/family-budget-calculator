@@ -105,3 +105,7 @@
 [data-theme="bronze"] .expenses-table__amount {
   color: var(--bronze-copper);
 }
+
+[data-theme="japanese"] .expenses-table__amount {
+  color: var(--wabi-terracotta);
+}

@@ -336,3 +336,7 @@
 [data-theme="bronze"] .expected-incomes-table__amount {
   color: var(--bronze-emerald);
 }
+
+[data-theme="japanese"] .expected-incomes-table__amount {
+  color: var(--wabi-teal);
+}

@@ -32,7 +32,7 @@ const WIPE_CONFIRM_WORD = 'УДАЛИТЬ';
 const THEME_OPTIONS = [
   { value: THEMES.LIGHT, label: 'Светлая' },
   { value: THEMES.DARK, label: 'Тёмная' },
-  { value: THEMES.JAPANESE, label: 'Японская' },
+  { value: THEMES.JAPANESE, label: 'Ваби-саби' },
   { value: THEMES.PEARL, label: 'Водная жемчужина' },
   { value: THEMES.BRONZE, label: 'Бронзовая опора' },
 ];

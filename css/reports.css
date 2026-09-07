@@ -258,3 +258,11 @@
 [data-theme="bronze"] .reports-metric__value--expense {
   color: var(--bronze-copper);
 }
+
+[data-theme="japanese"] .reports-metric__value--income {
+  color: var(--wabi-teal);
+}
+
+[data-theme="japanese"] .reports-metric__value--expense {
+  color: var(--wabi-terracotta);
+}

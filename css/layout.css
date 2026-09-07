@@ -747,3 +747,294 @@
   letter-spacing: -0.02em;
   font-weight: var(--font-weight-semibold);
 }
+
+/* Ваби-саби: оболочка. Только data-theme="japanese". */
+[data-theme="japanese"] body {
+  color: var(--wabi-cream);
+  font-family: var(--font-family);
+  background-color: var(--wabi-bg);
+  background-image:
+    var(--wabi-grain),
+    radial-gradient(ellipse 110% 85% at 50% 50%, transparent 32%, rgba(0, 0, 0, 0.48) 100%),
+    radial-gradient(ellipse 70% 55% at 6% 2%, rgba(95, 141, 139, 0.11), transparent 54%),
+    radial-gradient(ellipse 45% 35% at 12% 8%, rgba(197, 160, 89, 0.05), transparent 48%),
+    radial-gradient(ellipse 55% 40% at 94% 96%, rgba(5, 13, 10, 0.55), transparent 58%),
+    linear-gradient(168deg, #0a1814 0%, #081410 50%, #060f0c 100%);
+  background-blend-mode: soft-light, normal, normal, normal, normal, normal;
+}
+
+[data-theme="japanese"] .app {
+  position: relative;
+}
+
+[data-theme="japanese"] .app-header {
+  background-color: rgba(8, 20, 16, 0.94);
+  border-bottom: var(--wabi-border-solid);
+  box-shadow: var(--wabi-border-inset);
+}
+
+[data-theme="japanese"] .app-header__title {
+  font-family: var(--wabi-font-display);
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--wabi-gold);
+}
+
+[data-theme="japanese"] .app-nav {
+  position: relative;
+  background-color: var(--wabi-nav-bg);
+  background-image: var(--wabi-nav-texture);
+  border-right: none;
+  border-bottom: none;
+}
+
+/* Кинцуги-шов: вертикальный на десктопе */
+@media (min-width: 1024px) {
+  [data-theme="japanese"] .app-nav::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: -2px;
+    bottom: 0;
+    z-index: 2;
+    width: 4px;
+    pointer-events: none;
+    opacity: 0.78;
+    background:
+      linear-gradient(
+        180deg,
+        transparent 0%,
+        var(--wabi-gold-bright) 3%,
+        transparent 8%,
+        rgba(197, 160, 89, 0.65) 16%,
+        transparent 22%,
+        var(--wabi-gold) 30%,
+        transparent 36%,
+        var(--wabi-gold-deep) 44%,
+        transparent 50%,
+        rgba(212, 175, 55, 0.8) 58%,
+        transparent 64%,
+        var(--wabi-gold) 72%,
+        transparent 78%,
+        var(--wabi-gold-bright) 88%,
+        transparent 95%
+      );
+    filter: blur(0.25px);
+  }
+}
+
+/* Кинцуги-шов: горизонтальный под меню на планшете и телефоне */
+@media (max-width: 1023px) {
+  [data-theme="japanese"] .app-nav::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 2;
+    height: 3px;
+    pointer-events: none;
+    opacity: 0.72;
+    background:
+      linear-gradient(
+        90deg,
+        transparent 0%,
+        var(--wabi-gold-bright) 6%,
+        transparent 12%,
+        rgba(197, 160, 89, 0.6) 22%,
+        transparent 28%,
+        var(--wabi-gold) 38%,
+        transparent 44%,
+        var(--wabi-gold-deep) 54%,
+        transparent 60%,
+        rgba(212, 175, 55, 0.75) 72%,
+        transparent 78%,
+        var(--wabi-gold) 88%,
+        transparent 94%
+      );
+    filter: blur(0.25px);
+  }
+}
+
+[data-theme="japanese"] .app-nav__link {
+  position: relative;
+  font-family: var(--wabi-font-display);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--wabi-gold-muted);
+  border-radius: var(--wabi-radius);
+  border: 1px solid transparent;
+}
+
+[data-theme="japanese"] .app-nav__link:hover {
+  color: var(--wabi-cream);
+  background: linear-gradient(180deg, rgba(197, 160, 89, 0.04) 0%, rgba(197, 160, 89, 0.1) 100%);
+}
+
+[data-theme="japanese"] .app-nav__link[aria-current="page"] {
+  color: var(--wabi-gold-bright);
+  background: linear-gradient(180deg, rgba(197, 160, 89, 0.06) 0%, rgba(197, 160, 89, 0.16) 100%);
+  border-color: rgba(197, 160, 89, 0.28);
+  box-shadow:
+    inset 0 -2px 0 rgba(197, 160, 89, 0.38),
+    inset 0 1px 0 rgba(197, 160, 89, 0.08);
+  font-weight: 600;
+}
+
+[data-theme="japanese"] .app-nav__link[aria-current="page"]::before {
+  display: none;
+}
+
+[data-theme="japanese"] .app-section__title {
+  font-family: var(--wabi-font-display);
+  font-size: clamp(1.35rem, 2.4vw, 1.85rem);
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--wabi-gold);
+}
+
+[data-theme="japanese"] .app-section__description {
+  color: var(--wabi-cream-muted);
+}
+
+[data-theme="japanese"] .app-section__workspace {
+  background-color: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+[data-theme="japanese"] .notifications {
+  background-color: var(--wabi-surface);
+  background-image: var(--wabi-panel-texture);
+  border-left: var(--wabi-border-solid);
+  box-shadow: var(--wabi-border-inset);
+}
+
+[data-theme="japanese"] .notifications__title {
+  font-family: var(--wabi-font-display);
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--wabi-gold-muted);
+}
+
+[data-theme="japanese"] :is(
+  .dashboard-card,
+  .dashboard-mood,
+  .dashboard-observations,
+  .incomes-table,
+  .expenses-table,
+  .limits-table,
+  .assets-table,
+  .assets-summary,
+  .templates-table,
+  .expected-incomes-table,
+  .planned-expenses-table,
+  .settings-block:not(.settings-block--danger),
+  .cushion-overview__card,
+  .cushion-settings,
+  .reports-metric,
+  .reports-panel,
+  .assets-snapshots,
+  .assets-compare,
+  .incomes__empty,
+  .expenses__empty,
+  .limits__empty,
+  .assets__empty,
+  .templates__empty,
+  .expected-incomes__empty,
+  .planned-expenses__empty
+) {
+  border: var(--wabi-border-solid);
+  border-radius: var(--wabi-radius);
+  box-shadow: var(--wabi-border-inset);
+  background-color: var(--wabi-surface);
+  background-image: var(--wabi-panel-texture);
+}
+
+[data-theme="japanese"] :is(
+  .incomes-table,
+  .expenses-table,
+  .limits-table,
+  .assets-table,
+  .templates-table,
+  .expected-incomes-table,
+  .planned-expenses-table
+) {
+  background-color: rgba(14, 30, 25, 0.42);
+}
+
+[data-theme="japanese"] :is(
+  .incomes-table thead,
+  .expenses-table thead,
+  .limits-table thead,
+  .assets-table thead,
+  .templates-table thead,
+  .expected-incomes-table thead,
+  .planned-expenses-table thead
+) {
+  background-color: transparent;
+  color: var(--wabi-gold-muted);
+  font-family: var(--wabi-font-display);
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+[data-theme="japanese"] :is(
+  .incomes-table th,
+  .expenses-table th,
+  .limits-table th,
+  .assets-table th,
+  .templates-table th,
+  .expected-incomes-table th,
+  .planned-expenses-table th
+) {
+  border-bottom: var(--wabi-border-solid);
+}
+
+[data-theme="japanese"] :is(
+  .incomes-table td,
+  .expenses-table td,
+  .limits-table td,
+  .assets-table td,
+  .templates-table td,
+  .expected-incomes-table td,
+  .planned-expenses-table td
+) {
+  border-bottom: 1px solid rgba(197, 160, 89, 0.12);
+}
+
+[data-theme="japanese"] :is(
+  .incomes__empty,
+  .expenses__empty,
+  .limits__empty,
+  .assets__empty,
+  .templates__empty,
+  .expected-incomes__empty,
+  .planned-expenses__empty
+) {
+  color: var(--wabi-cream-muted);
+}
+
+[data-theme="japanese"] :is(
+  .cushion-overview__value,
+  .reports-metric__value,
+  .assets-summary__value,
+  .incomes-table__amount,
+  .expenses-table__amount,
+  .limits-table__amount,
+  .assets-table__amount,
+  .expected-incomes-table__amount,
+  .planned-expenses-table__amount,
+  .reports-breakdown__amount
+) {
+  font-family: var(--wabi-font-display);
+  letter-spacing: 0.03em;
+  font-weight: 600;
+  color: var(--wabi-cream);
+}
